@@ -4,17 +4,16 @@ THE TERMINAL CASINO - Main Lobby / Launcher
 Ties together all eight table games into a single game with one
 shared chip balance. Run this file to play.
 
-    python casino.py
+    python main.py
 
 Each game lives in games/<name>.py and exposes a run_<name>(balance)
-function. That function runs its own game loop (using the original,
-unmodified game logic) and returns the player's updated balance
-when they press ESC to return to the lobby.
+function.
 """
 
+import asyncio
+import json
 import os
 import sys
-import json
 import traceback
 
 import pygame
@@ -57,32 +56,34 @@ hint_font = pygame.font.SysFont(FONT_OPTIONS, 15)
 button_font = pygame.font.SysFont(FONT_OPTIONS, 15, bold=True)
 
 # ----------------------------------------------------------------
-# Persistent bankroll (saved next to this script)
+# Safe Persistent bankroll (Web Assembly & Desktop compatible)
 # ----------------------------------------------------------------
 
-SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chips_save.json")
+SAVE_FILE = "chips_save.json"
 STARTING_BALANCE = 1000
 
 
 def load_balance():
     try:
-        with open(SAVE_FILE, "r") as f:
-            data = json.load(f)
-            return int(data.get("balance", STARTING_BALANCE))
-    except (FileNotFoundError, ValueError, json.JSONDecodeError):
-        return STARTING_BALANCE
+        if os.path.exists(SAVE_FILE):
+            with open(SAVE_FILE, "r") as f:
+                data = json.load(f)
+                return int(data.get("balance", STARTING_BALANCE))
+    except Exception as e:
+        print("Could not load save file:", e)
+    return STARTING_BALANCE
 
 
 def save_balance(balance):
     try:
         with open(SAVE_FILE, "w") as f:
             json.dump({"balance": balance}, f)
-    except OSError:
-        pass
+    except Exception as e:
+        print("Could not save balance:", e)
 
 
 # ----------------------------------------------------------------
-# Loading screen (shown while the game modules synthesize audio)
+# Loading screen
 # ----------------------------------------------------------------
 
 def draw_loading_screen(message):
@@ -108,9 +109,6 @@ from games import (
     video_poker,
 )
 
-# Each game module resizes the actual OS window to its own dimensions as a
-# side effect of being imported (module-level pygame.display.set_mode call).
-# Put the window back to lobby size now that every module has loaded.
 screen = pygame.display.set_mode((LOBBY_WIDTH, LOBBY_HEIGHT))
 pygame.display.set_caption("The Terminal Casino")
 
@@ -195,43 +193,42 @@ def draw_wood_panel(surface, rect):
 
 
 def draw_card_icon(surface, rect, index, accent):
-    """A tiny abstract glyph so each card reads distinctly at a glance."""
     cx, cy = rect.centerx, rect.top + 58
-    if index == 0:  # Blackjack - card pips
+    if index == 0:
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 26, cy - 18, 24, 36), 0, 3)
         pygame.draw.rect(surface, CREAM_WHITE, (cx + 2, cy - 18, 24, 36), 0, 3)
         pygame.draw.rect(surface, accent, (cx - 26, cy - 18, 24, 36), 2, 3)
         pygame.draw.rect(surface, accent, (cx + 2, cy - 18, 24, 36), 2, 3)
-    elif index == 1:  # Craps - dice
+    elif index == 1:
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 24, cy - 16, 30, 30), 0, 5)
         pygame.draw.rect(surface, accent, (cx - 24, cy - 16, 30, 30), 2, 5)
         for dx, dy in [(-12, -2), (0, 0), (12, 2)]:
             pygame.draw.circle(surface, CHARCOAL, (cx - 9 + dx, cy - 1 + dy), 2)
-    elif index == 2:  # Keno - numbered ball
+    elif index == 2:
         pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 20)
         pygame.draw.circle(surface, accent, (cx, cy), 20, 2)
         t = card_sub_font.render("18", True, CHARCOAL)
         surface.blit(t, (cx - t.get_width() // 2, cy - t.get_height() // 2))
-    elif index == 3:  # Mechanical Derby - horse track lane
+    elif index == 3:
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 30, cy - 8, 60, 16), 0, 3)
         pygame.draw.rect(surface, accent, (cx - 30, cy - 8, 60, 16), 2, 3)
         pygame.draw.polygon(
             surface, accent, [(cx + 18, cy), (cx + 8, cy - 6), (cx + 8, cy + 6)]
         )
-    elif index == 4:  # Roulette - wheel
+    elif index == 4:
         pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 22)
         pygame.draw.circle(surface, accent, (cx, cy), 22, 2)
         pygame.draw.circle(surface, accent, (cx, cy), 6)
-    elif index == 5:  # Slots - reel window
+    elif index == 5:
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 28, cy - 16, 56, 32), 0, 4)
         pygame.draw.rect(surface, accent, (cx - 28, cy - 16, 56, 32), 2, 4)
         for lx in (cx - 9, cx + 9):
             pygame.draw.line(surface, accent, (lx, cy - 16), (lx, cy + 16), 1)
-    elif index == 6:  # Ultimate Hold 'Em - chips + cards
+    elif index == 6:
         pygame.draw.circle(surface, accent, (cx - 14, cy), 14, 3)
         pygame.draw.circle(surface, accent, (cx + 14, cy), 14, 3)
         pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 14, 3)
-    else:  # Video Poker - CRT screen
+    else:
         pygame.draw.rect(surface, CHARCOAL, (cx - 28, cy - 18, 56, 36), 0, 4)
         pygame.draw.rect(surface, accent, (cx - 28, cy - 18, 56, 36), 2, 4)
         pygame.draw.rect(surface, accent, (cx - 20, cy - 10, 40, 20), 1, 2)
@@ -258,13 +255,11 @@ def draw_lobby(balance, hover_idx):
     )
     screen.blit(sub_surf, (LOBBY_WIDTH // 2 - sub_surf.get_width() // 2, 122))
 
-    # Bankroll panel
     bank_rect = pygame.Rect(30, 18, 260, 40)
     draw_wood_panel(screen, bank_rect)
     bal_txt = bank_font.render(f"BANKROLL: ${balance}", True, CREAM_WHITE)
     screen.blit(bal_txt, (bank_rect.x + 16, bank_rect.y + 8))
 
-    # Reset button
     draw_wood_panel(screen, reset_btn_rect)
     reset_txt = button_font.render("RESET BANKROLL", True, GOLD_TEXT)
     screen.blit(
@@ -318,7 +313,7 @@ def restore_lobby_window():
     pygame.display.set_caption("The Terminal Casino")
 
 
-def main():
+async def main():
     balance = load_balance()
     running = True
 
@@ -358,6 +353,9 @@ def main():
         draw_lobby(balance, hover_idx)
         clock.tick(60)
 
+        # Essential for WebAssembly execution context
+        await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
