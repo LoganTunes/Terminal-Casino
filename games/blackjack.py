@@ -275,6 +275,7 @@ def draw_card(surface, card_obj, card_num_font, card_suit_font):
 async def run_blackjack(balance):
     global snd_card_slide, snd_chip, snd_win, snd_lose
 
+    pygame.font.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(_GAME_TITLE)
     clock = pygame.time.Clock()
@@ -288,7 +289,7 @@ async def run_blackjack(balance):
     card_num_font = pygame.font.SysFont("georgia", 22, bold=True)
     card_suit_font = pygame.font.SysFont(font_options, 32)
     chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
-    _lobby_hint_font = pygame.font.SysFont(None, 20)
+    _lobby_hint_font = pygame.font.SysFont("arial", 14)
 
     # Initialize audio safely inside game context
     if snd_card_slide is None:
