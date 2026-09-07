@@ -581,4 +581,7 @@ async def run_roulette(balance):
         _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
         screen.blit(_hint_surf, (10, HEIGHT - 22))
         pygame.display.flip()
+        
+        await asyncio.sleep(0)
+        
     return balance
