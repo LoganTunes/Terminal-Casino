@@ -150,7 +150,7 @@ WHITE_GLINT = (255, 255, 255)
 #                            FONTS
 # ============================================================
 
-font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
+font_options = ("segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial")
 
 ui_font = pygame.font.SysFont(font_options, 15, bold=True)
 label_font = pygame.font.SysFont(font_options, 13, bold=True)
