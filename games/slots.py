@@ -1,10 +1,11 @@
 import asyncio
+import io
 import pygame
 import random
 import sys
 import array
 import math
-
+import urllib.request
 
 # ============================================================
 #        ORIGINAL CASINO MATH ENGINE & GAME LOGIC
@@ -73,11 +74,11 @@ pygame.mixer.init(
 WIDTH, HEIGHT = 900, 720
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Vintage Vegas Slots - Pure Vector Build")
+pygame.display.set_caption("Vintage Vegas Slots")
 
 clock = pygame.time.Clock()
 _lobby_hint_font = pygame.font.SysFont("sans-serif", 20)
-_GAME_TITLE = "Vintage Vegas Slots - Pure Vector Build"
+_GAME_TITLE = "Vintage Vegas Slots"
 
 
 # ============================================================
@@ -186,11 +187,37 @@ label_font = pygame.font.SysFont("sans-serif", 15, bold=True)
 
 
 # ============================================================
-#             HIGH-DETAIL EMOJI VECTOR RENDERERS
+#            DYNAMIC REAL EMOJI IMAGE LOADER
 # ============================================================
 
+EMOJI_UNICODE_MAP = {
+    CHERRY: "1f352", # 🍒
+    GRAPE: "1f347",  # 🍇
+    ORANGE: "1f34a", # 🍊
+    LEMON: "1f34b",  # 🍋
+    BELL: "1f514",   # 🔔
+}
+
+EMOJI_SURFACES = {}
+
+def fetch_emoji_surface(hex_code):
+    """Downloads transparent PNG emoji graphic dynamically."""
+    url = f"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/{hex_code}.png"
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as response:
+        image_data = response.read()
+    image_file = io.BytesIO(image_data)
+    return pygame.image.load(image_file).convert_alpha()
+
+print("Downloading authentic emoji assets...")
+for sym, code in EMOJI_UNICODE_MAP.items():
+    try:
+        EMOJI_SURFACES[sym] = fetch_emoji_surface(code)
+    except Exception as e:
+        print(f"Could not load emoji image for {sym}: {e}")
+
+# High-Detail Vector fallback renderers for BAR & 7
 def draw_custom_seven(surface, cx, cy, scale=1.0):
-    """3D Metallic Red '7' with beveling and gold outline."""
     pts = [
         (cx - int(22 * scale), cy - int(28 * scale)),
         (cx + int(22 * scale), cy - int(28 * scale)),
@@ -199,190 +226,34 @@ def draw_custom_seven(surface, cx, cy, scale=1.0):
         (cx + int(8 * scale), cy - int(14 * scale)),
         (cx - int(22 * scale), cy - int(14 * scale)),
     ]
-    shadow_pts = [(px + int(3 * scale), py + int(3 * scale)) for px, py in pts]
-    pygame.draw.polygon(surface, GOLD_SHADOW, shadow_pts)
-    pygame.draw.polygon(surface, VINTAGE_GOLD, pts)
-    
-    inner_pts = [(px - int(1 * scale), py - int(1 * scale)) for px, py in pts]
-    pygame.draw.polygon(surface, (230, 30, 30), inner_pts)
-    pygame.draw.line(
-        surface,
-        WHITE_GLINT,
-        (cx - int(18 * scale), cy - int(25 * scale)),
-        (cx + int(18 * scale), cy - int(25 * scale)),
-        max(1, int(3 * scale)),
-    )
-
+    pygame.draw.polygon(surface, GOLD_SHADOW, [(px + int(2 * scale), py + int(2 * scale)) for px, py in pts])
+    pygame.draw.polygon(surface, BRIGHT_RED, pts)
+    pygame.draw.line(surface, WHITE_GLINT, (cx - int(20 * scale), cy - int(26 * scale)), (cx + int(20 * scale), cy - int(26 * scale)), max(1, int(3 * scale)))
 
 def draw_custom_bar(surface, cx, cy, scale=1.0):
-    """3D Metallic Beveled BAR Badge."""
     w, h = int(76 * scale), int(36 * scale)
     bar_rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
-
-    pygame.draw.rect(surface, (15, 15, 20), bar_rect, border_radius=max(1, int(5 * scale)))
-    
     gold_rect = pygame.Rect(bar_rect.x + 2, bar_rect.y + 2, bar_rect.width - 4, bar_rect.height - 4)
     inner_rect = pygame.Rect(bar_rect.x + 4, bar_rect.y + 4, bar_rect.width - 8, bar_rect.height - 8)
-
-    pygame.draw.rect(surface, VINTAGE_GOLD, gold_rect, border_radius=max(1, int(4 * scale)))
-    pygame.draw.rect(surface, CHARCOAL, inner_rect, border_radius=max(1, int(3 * scale)))
-
-    bar_font = pygame.font.SysFont("sans-serif", int(16 * scale), bold=True)
+    pygame.draw.rect(surface, CHARCOAL, bar_rect, border_radius=max(1, int(4 * scale)))
+    pygame.draw.rect(surface, VINTAGE_GOLD, gold_rect, border_radius=max(1, int(3 * scale)))
+    pygame.draw.rect(surface, CHARCOAL, inner_rect, border_radius=max(1, int(2 * scale)))
+    bar_font = pygame.font.SysFont("sans-serif", int(15 * scale), bold=True)
     bar_text = bar_font.render("BAR", True, CREAM_WHITE)
     surface.blit(bar_text, bar_text.get_rect(center=(cx, cy)))
 
-
-def draw_custom_cherry(surface, cx, cy, scale=1.0):
-    """Glossy 🍒 Cherry Emoji match with curved stems and leaf."""
-    p1 = (cx - int(10 * scale), cy + int(6 * scale))
-    p2 = (cx + int(10 * scale), cy + int(8 * scale))
-    top_stem = (cx + int(3 * scale), cy - int(22 * scale))
-
-    pygame.draw.line(surface, (70, 110, 25), p1, top_stem, max(1, int(3 * scale)))
-    pygame.draw.line(surface, (85, 130, 30), p2, top_stem, max(1, int(3 * scale)))
-    
-    leaf_pts = [
-        top_stem,
-        (top_stem[0] - int(10 * scale), top_stem[1] - int(2 * scale)),
-        (top_stem[0] - int(4 * scale), top_stem[1] + int(6 * scale)),
-    ]
-    pygame.draw.polygon(surface, (110, 175, 40), leaf_pts)
-
-    for ox, oy in [(-10, 6), (10, 8)]:
-        bx, by = cx + int(ox * scale), cy + int(oy * scale)
-        r = int(12 * scale)
-        
-        pygame.draw.circle(surface, (130, 10, 25), (bx + 1, by + 1), r)
-        pygame.draw.circle(surface, (225, 25, 45), (bx, by), r - 1)
-        pygame.draw.circle(surface, (250, 80, 95), (bx - int(3 * scale), by - int(3 * scale)), int(r * 0.55))
-        pygame.draw.circle(surface, WHITE_GLINT, (bx - int(4 * scale), by - int(4 * scale)), max(1, int(2.5 * scale)))
-
-
-def draw_custom_bell(surface, cx, cy, scale=1.0):
-    """3D Golden Liberty Bell 🔔 with rim glare and dark clapper."""
-    pygame.draw.circle(surface, (50, 40, 20), (cx, cy + int(16 * scale)), max(1, int(6 * scale)))
-    
-    pts = [
-        (cx, cy - int(22 * scale)),
-        (cx + int(8 * scale), cy - int(20 * scale)),
-        (cx + int(15 * scale), cy - int(8 * scale)),
-        (cx + int(23 * scale), cy + int(12 * scale)),
-        (cx - int(23 * scale), cy + int(12 * scale)),
-        (cx - int(15 * scale), cy - int(8 * scale)),
-        (cx - int(8 * scale), cy - int(20 * scale)),
-    ]
-    pygame.draw.polygon(surface, (255, 190, 20), pts)
-    
-    shadow_pts = [
-        (cx, cy - int(22 * scale)),
-        (cx + int(8 * scale), cy - int(20 * scale)),
-        (cx + int(15 * scale), cy - int(8 * scale)),
-        (cx + int(23 * scale), cy + int(12 * scale)),
-        (cx, cy + int(12 * scale)),
-    ]
-    pygame.draw.polygon(surface, (215, 140, 10), shadow_pts)
-    
-    rim_rect = pygame.Rect(cx - int(25 * scale), cy + int(10 * scale), int(50 * scale), int(7 * scale))
-    pygame.draw.ellipse(surface, (255, 215, 70), rim_rect)
-    pygame.draw.ellipse(surface, (180, 110, 0), rim_rect, max(1, int(2 * scale)))
-    
-    pygame.draw.line(
-        surface,
-        WHITE_GLINT,
-        (cx - int(10 * scale), cy - int(12 * scale)),
-        (cx - int(16 * scale), cy + int(8 * scale)),
-        max(1, int(3 * scale)),
-    )
-
-
-def draw_custom_lemon(surface, cx, cy, scale=1.0):
-    """Vibrant Citrus 🍋 Emoji with texture tips and glossy sheen."""
-    w, h = int(48 * scale), int(32 * scale)
-    rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
-    
-    pygame.draw.circle(surface, (210, 175, 15), (cx - int(23 * scale), cy), max(1, int(4 * scale)))
-    pygame.draw.circle(surface, (210, 175, 15), (cx + int(23 * scale), cy), max(1, int(4 * scale)))
-
-    pygame.draw.ellipse(surface, (255, 225, 30), rect)
-    pygame.draw.arc(surface, (190, 150, 0), rect, 3.14, 6.28, max(1, int(3 * scale)))
-    
-    shine_rect = pygame.Rect(cx - int(16 * scale), cy - int(12 * scale), int(26 * scale), int(14 * scale))
-    pygame.draw.ellipse(surface, (255, 245, 140), shine_rect)
-    pygame.draw.ellipse(
-        surface,
-        WHITE_GLINT,
-        pygame.Rect(cx - int(12 * scale), cy - int(10 * scale), int(12 * scale), int(6 * scale)),
-    )
-
-
-def draw_custom_grape(surface, cx, cy, scale=1.0):
-    """Deep Purple 🍇 Grape Cluster with green leaf stem."""
-    pygame.draw.line(
-        surface,
-        (80, 130, 30),
-        (cx, cy - int(14 * scale)),
-        (cx + int(6 * scale), cy - int(24 * scale)),
-        max(1, int(3 * scale)),
-    )
-    pygame.draw.polygon(
-        surface,
-        (110, 180, 35),
-        [
-            (cx, cy - int(18 * scale)),
-            (cx - int(12 * scale), cy - int(22 * scale)),
-            (cx - int(4 * scale), cy - int(12 * scale)),
-        ],
-    )
-
-    circles = [
-        (0, -12), (-8, -5), (8, -5),
-        (-12, 3), (0, 3), (12, 3),
-        (-6, 11), (6, 11), (0, 19),
-    ]
-    r = int(7.5 * scale)
-    
-    for ox, oy in circles:
-        bx, by = cx + int(ox * scale), cy + int(oy * scale)
-        pygame.draw.circle(surface, (60, 15, 85), (bx + 1, by + 1), r)
-        pygame.draw.circle(surface, (145, 45, 195), (bx, by), r - 1)
-        pygame.draw.circle(surface, (195, 115, 240), (bx - int(2 * scale), by - int(2 * scale)), int(r * 0.4))
-        pygame.draw.circle(surface, WHITE_GLINT, (bx - int(2.5 * scale), by - int(2.5 * scale)), max(1, int(1.2 * scale)))
-
-
-def draw_custom_orange(surface, cx, cy, scale=1.0):
-    """3D Citrus 🍊 Orange Emoji with dimpled shading and sprout leaf."""
-    r = int(21 * scale)
-    
-    leaf_pts = [
-        (cx, cy - r),
-        (cx + int(10 * scale), cy - r - int(10 * scale)),
-        (cx + int(2 * scale), cy - r - int(13 * scale)),
-    ]
-    pygame.draw.polygon(surface, (90, 165, 30), leaf_pts)
-
-    pygame.draw.circle(surface, (180, 75, 10), (cx + 1, cy + 1), r)
-    pygame.draw.circle(surface, (255, 140, 25), (cx, cy), r - 1)
-    
-    pygame.draw.circle(surface, (255, 180, 70), (cx - int(5 * scale), cy - int(5 * scale)), int(r * 0.65))
-    pygame.draw.circle(surface, WHITE_GLINT, (cx - int(8 * scale), cy - int(8 * scale)), max(1, int(3 * scale)))
-
-
 def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
-    """Direct visual dispatcher ensuring no text/emoji dependencies."""
-    if symbol == SEVEN:
+    """Direct visual dispatcher rendering high-res emojis or classic badges."""
+    if symbol in EMOJI_SURFACES:
+        base_img = EMOJI_SURFACES[symbol]
+        size = int(60 * scale)
+        scaled_img = pygame.transform.smoothscale(base_img, (size, size))
+        rect = scaled_img.get_rect(center=(center_x, center_y))
+        surface.blit(scaled_img, rect)
+    elif symbol == SEVEN:
         draw_custom_seven(surface, center_x, center_y, scale)
     elif symbol == BAR:
         draw_custom_bar(surface, center_x, center_y, scale)
-    elif symbol == CHERRY:
-        draw_custom_cherry(surface, center_x, center_y, scale)
-    elif symbol == BELL:
-        draw_custom_bell(surface, center_x, center_y, scale)
-    elif symbol == LEMON:
-        draw_custom_lemon(surface, center_x, center_y, scale)
-    elif symbol == GRAPE:
-        draw_custom_grape(surface, center_x, center_y, scale)
-    elif symbol == ORANGE:
-        draw_custom_orange(surface, center_x, center_y, scale)
 
 
 # ============================================================
@@ -420,53 +291,16 @@ async def run_slots(balance):
     lever_state = 0
     lever_offset_y = 0
 
-    lever_knob_rect = pygame.Rect(
-        760,
-        240,
-        50,
-        50,
-    )
-
-    dec_bet_rect = pygame.Rect(
-        190,
-        540,
-        40,
-        35,
-    )
-
-    inc_bet_rect = pygame.Rect(
-        280,
-        540,
-        40,
-        35,
-    )
+    lever_knob_rect = pygame.Rect(760, 240, 50, 50)
+    dec_bet_rect = pygame.Rect(190, 540, 40, 35)
+    inc_bet_rect = pygame.Rect(280, 540, 40, 35)
 
     def draw_brushed_chrome_rect(surface, rect):
         pygame.draw.rect(surface, CHROME_SHADOW, rect)
-        pygame.draw.rect(
-            surface,
-            CHROME_LIGHT,
-            (rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4),
-        )
-        pygame.draw.rect(
-            surface,
-            CHROME_BASE,
-            (rect.x + 6, rect.y + 6, rect.width - 12, rect.height - 12),
-        )
-        pygame.draw.line(
-            surface,
-            CHROME_LIGHT,
-            (rect.x + 10, rect.y + 30),
-            (rect.x + rect.width - 10, rect.y + 30),
-            2,
-        )
-        pygame.draw.line(
-            surface,
-            CHROME_SHADOW,
-            (rect.x + 10, rect.y + rect.height - 30),
-            (rect.x + rect.width - 10, rect.y + rect.height - 30),
-            2,
-        )
+        pygame.draw.rect(surface, CHROME_LIGHT, (rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4))
+        pygame.draw.rect(surface, CHROME_BASE, (rect.x + 6, rect.y + 6, rect.width - 12, rect.height - 12))
+        pygame.draw.line(surface, CHROME_LIGHT, (rect.x + 10, rect.y + 30), (rect.x + rect.width - 10, rect.y + 30), 2)
+        pygame.draw.line(surface, CHROME_SHADOW, (rect.x + 10, rect.y + rect.height - 30), (rect.x + rect.width - 10, rect.y + rect.height - 30), 2)
 
     def draw_quarter_token(surface, x, y):
         pygame.draw.ellipse(surface, TOKEN_EDGE, (x - 12, y - 7, 24, 14))
@@ -625,11 +459,11 @@ async def run_slots(balance):
         screen.blit(pay_text1, (170, 110))
         screen.blit(pay_text2, (170, 160))
 
-        # Mini vector icons on marquee
+        # Mini icons on marquee
         draw_custom_seven(screen, 162, 116, scale=0.35)
         draw_custom_bar(screen, 260, 116, scale=0.45)
-        draw_custom_orange(screen, 400, 116, scale=0.45)
-        draw_custom_cherry(screen, 162, 166, scale=0.45)
+        render_symbol(screen, ORANGE, 400, 116, scale=0.45)
+        render_symbol(screen, CHERRY, 162, 166, scale=0.45)
 
         # Reel Housing
         pygame.draw.rect(screen, CHARCOAL, (146, 236, 508, 138))
