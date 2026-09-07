@@ -46,8 +46,8 @@ BRIGHT_RED = (190, 25, 25)
 CARD_BG = (46, 20, 12)
 CARD_BG_HOVER = (66, 30, 16)
 
-# Use same font fallback approach as the games
-FONT_OPTIONS = ("georgia", "arial")
+# Use same font fallback approach as the games (emoji support + Georgia/Arial)
+FONT_OPTIONS = ("segoeuiemoji", "applecoloremoji", "notocoloremoji", "georgia", "arial")
 title_font = pygame.font.SysFont(FONT_OPTIONS, 46, bold=True)
 subtitle_font = pygame.font.SysFont(FONT_OPTIONS, 16)
 bank_font = pygame.font.SysFont(FONT_OPTIONS, 24, bold=True)
