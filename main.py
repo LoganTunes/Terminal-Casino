@@ -86,6 +86,7 @@ def save_balance(balance):
 # Loading screen
 # ----------------------------------------------------------------
 
+
 def draw_loading_screen(message):
     screen.fill(MAHOGANY)
     msg_surf = bank_font.render(message, True, GOLD_TEXT)
@@ -339,14 +340,48 @@ async def main():
                     balance = STARTING_BALANCE
                     save_balance(balance)
                 elif hover_idx is not None:
+                    # Call the game's run function safely. Games may be synchronous,
+                    # return a coroutine, raise SystemExit (via sys.exit()), or
+                    # return unexpected values. We handle all those cases so the
+                    # lobby doesn't crash when a game misbehaves.
                     game = GAMES[hover_idx]
+                    result = None
                     try:
-                        balance = game["run"](balance)
-                    except Exception:
+                        result = game["run"](balance)
+
+                        # If the game returned a coroutine (async function), await it.
+                        if asyncio.iscoroutine(result):
+                            try:
+                                result = await result
+                            except SystemExit:
+                                # Game called sys.exit() while running as a coroutine.
+                                traceback.print_exc()
+                                result = balance
+                    except SystemExit:
+                        # Some games may call sys.exit() directly; catch it so the
+                        # lobby doesn't exit entirely.
                         traceback.print_exc()
-                    if balance is None:
+                        result = balance
+                    except Exception:
+                        # Print the traceback (useful for debugging) but keep the
+                        # lobby alive and preserve the previous balance.
+                        traceback.print_exc()
+                        result = balance
+
+                    # Normalize the returned result into a valid integer balance.
+                    if result is None:
                         balance = 0
-                    balance = max(0, balance)
+                    else:
+                        try:
+                            balance = int(result)
+                        except Exception:
+                            # If the game returns something unexpected, preserve the
+                            # previous balance instead of crashing.
+                            print(
+                                "Warning: game returned non-numeric balance, preserving previous balance."
+                            )
+                            balance = max(0, balance)
+
                     save_balance(balance)
                     restore_lobby_window()
 
