@@ -6,7 +6,7 @@ import sys
 import pygame
 
 # ============================================================
-#         ORIGINAL CASINO MATH ENGINE & GAME LOGIC
+#         CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 SUITS = ["♥", "♦", "♣", "♠"]
@@ -15,7 +15,7 @@ RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
 
 def create_deck():
     deck = []
-    # 6-deck shoe to match Vegas standard & prevent emptying mid-game
+    # 6-deck shoe standard
     for _ in range(6):
         for suit in SUITS:
             for rank in RANKS:
@@ -53,9 +53,9 @@ def calculate_hand_value(hand):
 pygame.init()
 
 WIDTH, HEIGHT = 950, 720
-_GAME_TITLE = "Classic Vegas Blackjack - 5-Spot Table"
+_GAME_TITLE = "Classic Vegas Blackjack"
 
-# Sound globals populated safely inside run_blackjack()
+# Sound globals
 snd_card_slide = None
 snd_chip = None
 snd_win = None
@@ -76,7 +76,7 @@ def safe_create_sound(func):
     try:
         return func()
     except Exception as e:
-        print(f"[Pygbag Audio Warning] {e}")
+        print(f"[Audio Warning] {e}")
         return DummySound()
 
 
@@ -158,16 +158,13 @@ MAHOGANY = (42, 12, 6)
 WOOD_LIGHT = (75, 26, 14)
 LEATHER_RAIL = (24, 8, 4)
 
-CHROME_LIGHT = (210, 210, 210)
 CHROME_SHADOW = (80, 80, 80)
-
 VINTAGE_GOLD = (212, 163, 89)
 GOLD_TEXT = (230, 185, 105)
 GOLD_SHADOW = (145, 105, 45)
 
 CREAM_WHITE = (247, 245, 230)
 CHARCOAL = (20, 20, 20)
-
 BRIGHT_RED = (190, 25, 25)
 
 
@@ -268,19 +265,22 @@ def draw_card(surface, card_obj, card_num_font, card_suit_font):
 
 
 # ============================================================
-#                        LIVE STATES
+#                      FULL GAME ROUTINE
 # ============================================================
-
 
 async def run_blackjack(balance):
     global snd_card_slide, snd_chip, snd_win, snd_lose
 
-    pygame.font.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption(_GAME_TITLE)
+    screen = pygame.display.get_surface()
+    if screen is None:
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+    screen.fill(MAHOGANY)
+    pygame.display.flip()
+    await asyncio.sleep(0)
+
     clock = pygame.time.Clock()
 
-    # Safely initialize fonts inside function context
     font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
     ui_font = pygame.font.SysFont(font_options, 16, bold=True)
     label_font = pygame.font.SysFont(font_options, 12, bold=True)
@@ -291,18 +291,18 @@ async def run_blackjack(balance):
     chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
     _lobby_hint_font = pygame.font.SysFont("arial", 14)
 
-    # Initialize audio safely inside game context
     if snd_card_slide is None:
         try:
-            pygame.mixer.init(frequency=22050, size=-16, channels=1)
-        except Exception:
-            pass
-        snd_card_slide = safe_create_sound(create_card_slide_sound)
-        snd_chip = safe_create_sound(create_chip_click_sound)
-        snd_win = safe_create_sound(create_win_chime_sound)
-        snd_lose = safe_create_sound(create_loss_sound)
+            if not pygame.mixer.get_init():
+                pygame.mixer.init(frequency=22050, size=-16, channels=1)
+            snd_card_slide = safe_create_sound(create_card_slide_sound)
+            snd_chip = safe_create_sound(create_chip_click_sound)
+            snd_win = safe_create_sound(create_win_chime_sound)
+            snd_lose = safe_create_sound(create_loss_sound)
+        except Exception as err:
+            print(f"Audio init bypassed: {err}")
+            snd_card_slide = snd_chip = snd_win = snd_lose = DummySound()
 
-    # Clear event queue to drop leftover mouse clicks from lobby transition
     pygame.event.clear()
 
     running = True
@@ -483,10 +483,6 @@ async def run_blackjack(balance):
                 snd_chip.play()
 
             current_bet = 0
-
-    # ============================================================
-    #                     MAIN GAME LOOP
-    # ============================================================
 
     while running:
         current_time = pygame.time.get_ticks()
@@ -813,3 +809,43 @@ async def run_blackjack(balance):
         await asyncio.sleep(0)
 
     return balance
+
+
+# ============================================================
+#                      MAIN LOBBY ENTRY POINT
+# ============================================================
+
+async def main():
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("The Terminal Casino")
+    bankroll = 1000
+
+    bj_btn_rect = pygame.Rect(40, 140, 200, 150)
+    font = pygame.font.SysFont("arial", 20, bold=True)
+
+    while True:
+        screen.fill((12, 82, 42))
+
+        # Render Blackjack lobby tile
+        pygame.draw.rect(screen, (42, 12, 6), bj_btn_rect, 0, 8)
+        pygame.draw.rect(screen, (212, 163, 89), bj_btn_rect, 2, 8)
+        lbl = font.render("Blackjack", True, (247, 245, 230))
+        screen.blit(lbl, (bj_btn_rect.centerx - lbl.get_width() // 2, bj_btn_rect.centery))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if bj_btn_rect.collidepoint(event.pos):
+                    # Highlight feedback frame before transition
+                    pygame.draw.rect(screen, (190, 25, 25), bj_btn_rect, 3, 8)
+                    pygame.display.flip()
+                    await asyncio.sleep(0.05)
+                    bankroll = await run_blackjack(bankroll)
+
+        pygame.display.flip()
+        await asyncio.sleep(0)
+
+if __name__ == "__main__":
+    asyncio.run(main())
