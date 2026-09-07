@@ -6,7 +6,7 @@ import array
 import math
 
 # ============================================================
-#       ORIGINAL CASINO MATH ENGINE & GAME LOGIC
+#        ORIGINAL CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 ROULETTE_NUMBERS = [
@@ -82,7 +82,10 @@ def evaluate_all_wagers(winning_num, winning_color, active_bets):
 # ============================================================
 
 pygame.init()
-pygame.mixer.init(frequency=22050, size=-16, channels=1)
+try:
+    pygame.mixer.init(frequency=22050, size=-16, channels=1)
+except Exception:
+    pass
 
 WIDTH, HEIGHT = 980, 640
 
@@ -90,38 +93,44 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Vintage Vegas Roulette - Perfect Layout")
 
 clock = pygame.time.Clock()
-_lobby_hint_font = pygame.font.SysFont(None, 20)
-_GAME_TITLE = ("Vintage Vegas Roulette - Perfect Layout")
+_GAME_TITLE = "Vintage Vegas Roulette - Perfect Layout"
 
 
 # ============================================================
-#               PROCEDURAL AUDIO SYNTH DRIVERS
+#                PROCEDURAL AUDIO SYNTH DRIVERS
 # ============================================================
+
+class DummySound:
+    def play(self):
+        pass
 
 def generate_synth_sound(freq_list, duration_ms, wave_type="square", volume=0.3):
-    sample_rate = 22050
-    total_samples = int(sample_rate * (duration_ms / 1000.0))
-    buffer = array.array("h", [0] * total_samples)
-    samples_per_freq = max(1, total_samples // len(freq_list))
+    try:
+        sample_rate = 22050
+        total_samples = int(sample_rate * (duration_ms / 1000.0))
+        buffer = array.array("h", [0] * total_samples)
+        samples_per_freq = max(1, total_samples // len(freq_list))
 
-    for i in range(total_samples):
-        freq_idx = min(i // samples_per_freq, len(freq_list) - 1)
-        freq = freq_list[freq_idx]
+        for i in range(total_samples):
+            freq_idx = min(i // samples_per_freq, len(freq_list) - 1)
+            freq = freq_list[freq_idx]
 
-        if freq == 0:
-            val = 0
-        else:
-            t = i / sample_rate
-            if wave_type == "square":
-                val = 32767 if math.sin(2 * math.pi * freq * t) >= 0 else -32768
-            elif wave_type == "triangle":
-                val = int(32767 * (2.0 * math.fabs(2.0 * (t * freq - math.floor(t * freq + 0.5))) - 1.0))
+            if freq == 0:
+                val = 0
             else:
-                val = int(32767 * math.sin(2 * math.pi * freq * t))
+                t = i / sample_rate
+                if wave_type == "square":
+                    val = 32767 if math.sin(2 * math.pi * freq * t) >= 0 else -32768
+                elif wave_type == "triangle":
+                    val = int(32767 * (2.0 * math.fabs(2.0 * (t * freq - math.floor(t * freq + 0.5))) - 1.0))
+                else:
+                    val = int(32767 * math.sin(2 * math.pi * freq * t))
 
-        buffer[i] = int(val * volume)
+            buffer[i] = int(val * volume)
 
-    return pygame.mixer.Sound(buffer=buffer)
+        return pygame.mixer.Sound(buffer=buffer)
+    except Exception:
+        return DummySound()
 
 
 snd_ball_click = generate_synth_sound([1600, 1200], 12, wave_type="square", volume=0.1)
@@ -131,7 +140,7 @@ snd_chip = generate_synth_sound([400, 600], 40, wave_type="triangle", volume=0.2
 
 
 # ============================================================
-#                       COLOR PALETTE
+#                        COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (10, 68, 33)
@@ -147,22 +156,20 @@ WHITE_GLINT = (255, 255, 255)
 
 
 # ============================================================
-#                            FONTS
+#                  SAFE CROSS-PLATFORM FONTS
 # ============================================================
 
-font_options = ("segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial")
-
-ui_font = pygame.font.SysFont(font_options, 15, bold=True)
-label_font = pygame.font.SysFont(font_options, 13, bold=True)
-grid_font = pygame.font.SysFont("georgia", 14, bold=True)
-wheel_font = pygame.font.SysFont("arial", 10, bold=True)
-chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
+ui_font = pygame.font.Font(None, 20)
+label_font = pygame.font.Font(None, 18)
+grid_font = pygame.font.Font(None, 22)
+wheel_font = pygame.font.Font(None, 14)
+chip_num_font = pygame.font.Font(None, 16)
+_lobby_hint_font = pygame.font.Font(None, 20)
 
 
 # ============================================================
-#                         LIVE STATES
+#                        LIVE STATES
 # ============================================================
-
 
 async def run_roulette(balance):
     global screen
@@ -173,11 +180,7 @@ async def run_roulette(balance):
     win_message = "CHOOSE CHIP VALUE, PLACE MULTIPLE BETS, THEN SPIN!"
     player_bets = {}
 
-
-    # ============================================================
-    #                   PHYSICS ENGINE VARIABLES
-    # ============================================================
-
+    # Physics Engine Variables
     is_spinning = False
     wheel_angle = 0.0
     ball_angle = 270.0
@@ -186,12 +189,7 @@ async def run_roulette(balance):
     spin_timer = 0
     ball_settled = False
 
-
-    # ============================================================
-    #     ADJUSTED LAYOUT: SLIGHTLY LARGER WHEEL & SHIFTED UI
-    # ============================================================
-
-    # Shifted 30px right to leave space for slightly bigger wheel
+    # Layout Parameters
     start_grid_x = 430
     start_grid_y = 120
     grid_w = 40
@@ -226,7 +224,6 @@ async def run_roulette(balance):
         "19-36": (pygame.Rect(start_grid_x + (outside_w * 5), outside_y, outside_w, grid_h), "HI_LOW:HIGH")
     }
 
-    # Chips Row Positioned Relative to Shifted Grid
     chips_y = outside_y + grid_h + 24
     chip_start_x = start_grid_x - 30
     chip_spacing = 96
@@ -239,17 +236,11 @@ async def run_roulette(balance):
         (1000, pygame.Rect(chip_start_x + (chip_spacing * 4), chips_y, 42, 42), (30, 30, 30), (212, 163, 89))
     ]
 
-    # Action Controls Aligned Under Shifted Grid
     controls_y = chips_y + 55
 
     bankroll_rect = pygame.Rect(start_grid_x - 30, controls_y, 200, 44)
     clear_btn_rect = pygame.Rect(start_grid_x + 185, controls_y, 110, 44)
     spin_btn_rect = pygame.Rect(start_grid_x + 310, controls_y, 170, 44)
-
-
-    # ============================================================
-    #                       CHIP DRAWING
-    # ============================================================
 
     def draw_chip_stack(surface, center_rect, text_val):
         bg_color = (240, 240, 240)
@@ -278,22 +269,12 @@ async def run_roulette(balance):
         c_txt = chip_num_font.render(display_str, True, CHARCOAL)
         surface.blit(c_txt, (cx - c_txt.get_width() // 2, cy - c_txt.get_height() // 2))
 
-
-    # ============================================================
-    #                      RENDERING LOOP
-    # ============================================================
-
     while running:
         dt = clock.tick(60) / 1000.0 * 60.0
 
-        # ========================================================
-        #                       EVENT HANDLING
-        # ========================================================
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
 
@@ -301,20 +282,17 @@ async def run_roulette(balance):
                 mouse_pos = event.pos
 
                 if not is_spinning:
-                    # Chip Selection
                     for val, rect, c1, c2 in chip_selections:
                         if rect.collidepoint(mouse_pos):
                             active_chip_wager = val
                             snd_chip.play()
 
-                    # Clear Bets
                     if clear_btn_rect.collidepoint(mouse_pos):
                         total_refund = sum(player_bets.values())
                         balance += total_refund
                         player_bets.clear()
                         snd_chip.play()
 
-                    # Outside Bets
                     for label, (rect, bet_key) in outside_bet_rects.items():
                         if rect.collidepoint(mouse_pos):
                             if balance >= active_chip_wager:
@@ -322,14 +300,12 @@ async def run_roulette(balance):
                                 balance -= active_chip_wager
                                 snd_chip.play()
 
-                    # Zero Bet
                     if zero_rect.collidepoint(mouse_pos):
                         if balance >= active_chip_wager:
                             player_bets["NUMBER:0"] = player_bets.get("NUMBER:0", 0) + active_chip_wager
                             balance -= active_chip_wager
                             snd_chip.play()
 
-                    # Number Bets
                     for num, (rect, bet_key) in number_rects.items():
                         if rect.collidepoint(mouse_pos):
                             if balance >= active_chip_wager:
@@ -337,7 +313,6 @@ async def run_roulette(balance):
                                 balance -= active_chip_wager
                                 snd_chip.play()
 
-                    # Spin Button
                     if spin_btn_rect.collidepoint(mouse_pos):
                         if any(v > 0 for v in player_bets.values()):
                             is_spinning = True
@@ -347,15 +322,10 @@ async def run_roulette(balance):
                             ball_speed = random.uniform(-22.0, -26.0)
                             win_message = "Rien ne va plus! No more bets..."
                         else:
-                            win_message = "❌ PLACE AT LEAST ONE CHIP ON FELT BEFORE SPINNING!"
-
-        # ============================================================
-        #                MECHANICAL WHEEL PHYSICS ENGINE
-        # ============================================================
+                            win_message = "PLACE AT LEAST ONE CHIP ON FELT BEFORE SPINNING!"
 
         if is_spinning:
             spin_timer += 1
-
             wheel_speed *= math.pow(0.982, dt)
             ball_speed *= math.pow(0.983, dt)
 
@@ -397,26 +367,20 @@ async def run_roulette(balance):
                 player_bets.clear()
 
                 if total_won > 0:
-                    win_message = f"🎉 WIN! Result: {winning_num} {winning_color}. Matches: {details} +${total_won}"
+                    win_message = f"WIN! Result: {winning_num} {winning_color}. Matches: {details} +${total_won}"
                     snd_win.play()
                 else:
-                    win_message = f"😢 Result: {winning_num} {winning_color}. No matched chips. Table cleared."
+                    win_message = f"Result: {winning_num} {winning_color}. No matched chips. Table cleared."
                     snd_lose.play()
 
-        # ============================================================
-        #                    TABLE BACKGROUND
-        # ============================================================
-
+        # Render Table Background
         screen.fill(MAHOGANY)
         pygame.draw.rect(screen, WOOD_LIGHT, (10, 10, WIDTH - 20, HEIGHT - 20), 10)
         pygame.draw.rect(screen, FELT_GREEN, (20, 20, WIDTH - 40, HEIGHT - 40))
 
-        # ========================================================
-        #   1. RENDER GRAPHICAL REVOLVING WHEEL (SLIGHTLY LARGER)
-        # ========================================================
-
+        # Render Wheel
         w_cx, w_cy = 205, 255
-        w_rad = 160  # Increased from 145px to 160px for a bolder look
+        w_rad = 160
 
         pygame.draw.circle(screen, CHARCOAL, (w_cx, w_cy), w_rad + 4)
         pygame.draw.circle(screen, WOOD_LIGHT, (w_cx, w_cy), w_rad)
@@ -474,11 +438,7 @@ async def run_roulette(balance):
             [(w_cx, w_cy - w_rad), (w_cx - 7, w_cy - w_rad - 11), (w_cx + 7, w_cy - w_rad - 11)]
         )
 
-        # ========================================================
-        #          2. RENDER THE INTEGRATED BETTING FELT
-        # ========================================================
-
-        # Zero Box
+        # Render Felt Layout
         z_rect = zero_rect
         z_val = player_bets.get("NUMBER:0", 0)
 
@@ -490,7 +450,6 @@ async def run_roulette(balance):
         if z_val > 0:
             draw_chip_stack(screen, z_rect, z_val)
 
-        # Numbers
         for num, (rect, bet_key) in number_rects.items():
             n_val = player_bets.get(bet_key, 0)
             box_color = BRIGHT_RED if NUMBER_COLORS[num] == "RED" else CHARCOAL
@@ -504,7 +463,6 @@ async def run_roulette(balance):
             if n_val > 0:
                 draw_chip_stack(screen, rect, n_val)
 
-        # Outside & Dozens Bets
         for label, (rect, bet_key) in outside_bet_rects.items():
             out_val = player_bets.get(bet_key, 0)
             box_color = BRIGHT_RED if label == "RED" else CHARCOAL if label == "BLACK" else FELT_GREEN
@@ -518,15 +476,10 @@ async def run_roulette(balance):
             if out_val > 0:
                 draw_chip_stack(screen, rect, out_val)
 
-        # Outer felt outline border
         felt_outline = pygame.Rect(start_grid_x - 45, start_grid_y, grid_total_width + 45, grid_h * 5)
         pygame.draw.rect(screen, CREAM_WHITE, felt_outline, 2)
 
-        # ========================================================
-        #          3. RENDER EXPANDED CHIP RACK & CONTROLS
-        # ========================================================
-
-        # Chip Selector Panel
+        # Chips & Controls
         for val, rect, col_bg, col_str in chip_selections:
             is_sel_chip = active_chip_wager == val
             pygame.draw.circle(screen, VINTAGE_GOLD if is_sel_chip else CHARCOAL, rect.center, 22)
@@ -544,7 +497,6 @@ async def run_roulette(balance):
             val_txt = chip_num_font.render(f"${display_str}", True, CHARCOAL)
             screen.blit(val_txt, (rect.centerx - val_txt.get_width() // 2, rect.centery - val_txt.get_height() // 2))
 
-        # Bankroll HUD Box
         pygame.draw.rect(screen, CHARCOAL, bankroll_rect, 0, 4)
         pygame.draw.rect(screen, VINTAGE_GOLD, bankroll_rect, 1, 4)
 
@@ -554,7 +506,6 @@ async def run_roulette(balance):
         screen.blit(bal_txt, (bankroll_rect.x + 10, bankroll_rect.y + 6))
         screen.blit(chip_txt, (bankroll_rect.x + 10, bankroll_rect.y + 24))
 
-        # Action Buttons
         for btn_rect, label, bg in [(clear_btn_rect, "CLEAR", CHARCOAL), (spin_btn_rect, "SPIN WHEEL", BRIGHT_RED)]:
             pygame.draw.rect(screen, bg, btn_rect, 0, 4)
             pygame.draw.rect(screen, CREAM_WHITE, btn_rect, 1, 4)
@@ -562,16 +513,13 @@ async def run_roulette(balance):
             b_txt = label_font.render(label, True, CREAM_WHITE)
             screen.blit(b_txt, (btn_rect.centerx - b_txt.get_width() // 2, btn_rect.centery - b_txt.get_height() // 2))
 
-        # ========================================================
-        #                  BOTTOM MESSAGE BANNER
-        # ========================================================
-
+        # Bottom Messages
         pygame.draw.rect(screen, CHARCOAL, (40, 560, WIDTH - 80, 40), 0, 4)
         pygame.draw.rect(screen, VINTAGE_GOLD, (40, 560, WIDTH - 80, 40), 1, 4)
 
         msg_color = (
             VINTAGE_GOLD if ("WIN" in win_message or "CHOOSE" in win_message)
-            else BRIGHT_RED if "❌" in win_message
+            else BRIGHT_RED if "PLACE" in win_message
             else CREAM_WHITE
         )
 
@@ -580,8 +528,8 @@ async def run_roulette(balance):
 
         _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
         screen.blit(_hint_surf, (10, HEIGHT - 22))
+        
         pygame.display.flip()
-        
         await asyncio.sleep(0)
-        
+
     return balance
