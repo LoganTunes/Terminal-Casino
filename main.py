@@ -281,7 +281,7 @@ def draw_lobby(balance, hover_idx):
         )
 
         accent = game["accent"]
-        accent_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.w - 6, 6)
+        accent_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.width - 6, 6)
         pygame.draw.rect(screen, accent, accent_rect, 0, 3)
 
         draw_card_icon(screen, rect, i, accent)
