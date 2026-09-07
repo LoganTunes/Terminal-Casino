@@ -47,27 +47,37 @@ def calculate_hand_value(hand):
 
 
 # ============================================================
-#               PYGAME VISUAL ENGINE INITIALIZATION
+#              PYGAME VISUAL ENGINE INITIALIZATION
 # ============================================================
 
 pygame.init()
 
-pygame.mixer.init(frequency=22050, size=-16, channels=1)
-
 WIDTH, HEIGHT = 950, 720
-
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-
-pygame.display.set_caption("Classic Vegas Blackjack - 5-Spot Table")
-
-clock = pygame.time.Clock()
-_lobby_hint_font = pygame.font.SysFont(None, 20)
 _GAME_TITLE = "Classic Vegas Blackjack - 5-Spot Table"
+
+# Sound globals populated safely inside run_blackjack()
+snd_card_slide = None
+snd_chip = None
+snd_win = None
+snd_lose = None
 
 
 # ============================================================
 #              REALISTIC CASINO AUDIO SYNTH ENGINE
 # ============================================================
+
+class DummySound:
+    def play(self):
+        pass
+
+
+def safe_create_sound(func):
+    """Safely builds audio buffers for WebAssembly or falls back cleanly."""
+    try:
+        return func()
+    except Exception as e:
+        print(f"[Pygbag Audio Warning] {e}")
+        return DummySound()
 
 
 def create_card_slide_sound():
@@ -139,12 +149,6 @@ def create_loss_sound():
     return pygame.mixer.Sound(buffer=buffer)
 
 
-snd_card_slide = create_card_slide_sound()
-snd_chip = create_chip_click_sound()
-snd_win = create_win_chime_sound()
-snd_lose = create_loss_sound()
-
-
 # ============================================================
 #                        COLOR PALETTE
 # ============================================================
@@ -168,21 +172,6 @@ BRIGHT_RED = (190, 25, 25)
 
 
 # ============================================================
-#                            FONTS
-# ============================================================
-
-font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
-
-ui_font = pygame.font.SysFont(font_options, 16, bold=True)
-label_font = pygame.font.SysFont(font_options, 12, bold=True)
-stencil_large = pygame.font.SysFont("georgia", 20, bold=True)
-stencil_small = pygame.font.SysFont("georgia", 13, bold=True)
-card_num_font = pygame.font.SysFont("georgia", 22, bold=True)
-card_suit_font = pygame.font.SysFont(font_options, 32)
-chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
-
-
-# ============================================================
 #                    ANIMATED CARD CLASS
 # ============================================================
 
@@ -200,7 +189,8 @@ class AnimatedCard:
         self.facedown = facedown
         self.flip_progress = 1.0 if not facedown else 0.0
         self.is_flipping = False
-        snd_card_slide.play()
+        if snd_card_slide:
+            snd_card_slide.play()
 
     def update(self):
         self.x += (self.target_x - self.x) * 0.2
@@ -217,10 +207,11 @@ class AnimatedCard:
         if self.facedown and not self.is_flipping:
             self.is_flipping = True
             self.flip_progress = 0.0
-            snd_card_slide.play()
+            if snd_card_slide:
+                snd_card_slide.play()
 
 
-def draw_card_surface(card_data, facedown=False, flip_scale=1.0):
+def draw_card_surface(card_data, card_num_font, card_suit_font, facedown=False, flip_scale=1.0):
     width = int(75 * abs(flip_scale))
     height = 110
     if width < 1:
@@ -259,14 +250,14 @@ def draw_card_surface(card_data, facedown=False, flip_scale=1.0):
     return surf
 
 
-def draw_card(surface, card_obj):
+def draw_card(surface, card_obj, card_num_font, card_suit_font):
     if card_obj.is_flipping:
         scale = math.cos(card_obj.flip_progress * math.pi)
     else:
         scale = -1.0 if card_obj.facedown else 1.0
 
     c_surf = draw_card_surface(
-        card_obj.card_data, card_obj.facedown, flip_scale=scale
+        card_obj.card_data, card_num_font, card_suit_font, card_obj.facedown, flip_scale=scale
     )
     if c_surf:
         draw_x = card_obj.x + (75 - c_surf.get_width()) // 2
@@ -277,14 +268,42 @@ def draw_card(surface, card_obj):
 
 
 # ============================================================
-#                         LIVE STATES
+#                        LIVE STATES
 # ============================================================
 
 
 async def run_blackjack(balance):
-    global screen
+    global snd_card_slide, snd_chip, snd_win, snd_lose
+
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(_GAME_TITLE)
+    clock = pygame.time.Clock()
+
+    # Safely initialize fonts inside function context
+    font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
+    ui_font = pygame.font.SysFont(font_options, 16, bold=True)
+    label_font = pygame.font.SysFont(font_options, 12, bold=True)
+    stencil_large = pygame.font.SysFont("georgia", 20, bold=True)
+    stencil_small = pygame.font.SysFont("georgia", 13, bold=True)
+    card_num_font = pygame.font.SysFont("georgia", 22, bold=True)
+    card_suit_font = pygame.font.SysFont(font_options, 32)
+    chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
+    _lobby_hint_font = pygame.font.SysFont(None, 20)
+
+    # Initialize audio safely inside game context
+    if snd_card_slide is None:
+        try:
+            pygame.mixer.init(frequency=22050, size=-16, channels=1)
+        except Exception:
+            pass
+        snd_card_slide = safe_create_sound(create_card_slide_sound)
+        snd_chip = safe_create_sound(create_chip_click_sound)
+        snd_win = safe_create_sound(create_win_chime_sound)
+        snd_lose = safe_create_sound(create_loss_sound)
+
+    # Clear event queue to drop leftover mouse clicks from lobby transition
+    pygame.event.clear()
+
     running = True
     active_chip_wager = 10
     current_bet = 0
@@ -625,7 +644,7 @@ async def run_blackjack(balance):
         screen.blit(d_lbl, (320, 75))
 
         for card in dealer_hand:
-            draw_card(screen, card)
+            draw_card(screen, card, card_num_font, card_suit_font)
 
         if (
             game_stage in ["RESOLVED", "DEALER_TURN"]
@@ -641,7 +660,7 @@ async def run_blackjack(balance):
         screen.blit(p_lbl, (320, 300))
 
         for card in player_hand:
-            draw_card(screen, card)
+            draw_card(screen, card, card_num_font, card_suit_font)
 
         if len(player_hand) > 0:
             p_val_txt = label_font.render(
