@@ -7,7 +7,7 @@ import math
 
 
 # ============================================================
-#        ORIGINAL CASINO MATH ENGINE & GAME LOGIC
+#         ORIGINAL CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 CHERRY = "CHERRY"
@@ -81,7 +81,7 @@ _GAME_TITLE = "Vintage Vegas Slots - Pure Vector Build"
 
 
 # ============================================================
-#                PROCEDURAL AUDIO SYNTH DRIVERS
+#                 PROCEDURAL AUDIO SYNTH DRIVERS
 # ============================================================
 
 def generate_synth_sound(
@@ -150,7 +150,7 @@ snd_coin = generate_synth_sound([987, 1318, 1568, 1046], 70, wave_type="square",
 
 
 # ============================================================
-#                        COLOR PALETTE
+#                         COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (10, 68, 33)
@@ -178,7 +178,7 @@ TOKEN_SHINE = (240, 245, 250)
 
 
 # ============================================================
-#                            FONTS
+#                             FONTS
 # ============================================================
 
 ui_font = pygame.font.SysFont("sans-serif", 22, bold=True)
@@ -186,7 +186,7 @@ label_font = pygame.font.SysFont("sans-serif", 15, bold=True)
 
 
 # ============================================================
-#             HIGH-DETAIL EMOJI VECTOR RENDERERS
+#               HIGH-DETAIL EMOJI VECTOR RENDERERS
 # ============================================================
 
 def draw_custom_seven(surface, cx, cy, scale=1.0):
@@ -368,25 +368,25 @@ def draw_custom_orange(surface, cx, cy, scale=1.0):
 
 
 def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
-    """Direct visual dispatcher ensuring no text/emoji dependencies."""
-    if symbol == SEVEN:
+    """Direct visual dispatcher accepting constants, strings, and emoji format variants."""
+    if symbol in ("7", SEVEN, "SEVEN"):
         draw_custom_seven(surface, center_x, center_y, scale)
-    elif symbol == BAR:
+    elif symbol in ("BAR", BAR, "bar"):
         draw_custom_bar(surface, center_x, center_y, scale)
-    elif symbol == CHERRY:
+    elif symbol in ("CHERRY", CHERRY, "🍒", "cherry"):
         draw_custom_cherry(surface, center_x, center_y, scale)
-    elif symbol == BELL:
+    elif symbol in ("BELL", BELL, "🔔", "bell"):
         draw_custom_bell(surface, center_x, center_y, scale)
-    elif symbol == LEMON:
+    elif symbol in ("LEMON", LEMON, "🍋", "lemon"):
         draw_custom_lemon(surface, center_x, center_y, scale)
-    elif symbol == GRAPE:
+    elif symbol in ("GRAPE", GRAPE, "🍇", "grape"):
         draw_custom_grape(surface, center_x, center_y, scale)
-    elif symbol == ORANGE:
+    elif symbol in ("ORANGE", ORANGE, "🍊", "orange"):
         draw_custom_orange(surface, center_x, center_y, scale)
 
 
 # ============================================================
-#                        LIVE STATES
+#                         LIVE STATES
 # ============================================================
 
 async def run_slots(balance):
