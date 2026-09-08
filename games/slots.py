@@ -81,7 +81,7 @@ _GAME_TITLE = "Vintage Vegas Slots - Pure Vector Build"
 
 
 # ============================================================
-#                 PROCEDURAL AUDIO SYNTH DRIVERS
+#                  PROCEDURAL AUDIO SYNTH DRIVERS
 # ============================================================
 
 def generate_synth_sound(
@@ -150,7 +150,7 @@ snd_coin = generate_synth_sound([987, 1318, 1568, 1046], 70, wave_type="square",
 
 
 # ============================================================
-#                         COLOR PALETTE
+#                          COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (10, 68, 33)
@@ -182,11 +182,11 @@ TOKEN_SHINE = (240, 245, 250)
 # ============================================================
 
 ui_font = pygame.font.SysFont("sans-serif", 22, bold=True)
-label_font = pygame.font.SysFont("sans-serif", 15, bold=True)
+label_font = pygame.font.SysFont("sans-serif", 13, bold=True)
 
 
 # ============================================================
-#               HIGH-DETAIL EMOJI VECTOR RENDERERS
+#                HIGH-DETAIL EMOJI VECTOR RENDERERS
 # ============================================================
 
 def draw_custom_seven(surface, cx, cy, scale=1.0):
@@ -233,7 +233,7 @@ def draw_custom_bar(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_cherry(surface, cx, cy, scale=1.0):
-    """Glossy 🍒 Cherry Emoji match with curved stems and leaf."""
+    """Glossy Cherry Emoji match with curved stems and leaf."""
     p1 = (cx - int(10 * scale), cy + int(6 * scale))
     p2 = (cx + int(10 * scale), cy + int(8 * scale))
     top_stem = (cx + int(3 * scale), cy - int(22 * scale))
@@ -259,7 +259,7 @@ def draw_custom_cherry(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_bell(surface, cx, cy, scale=1.0):
-    """3D Golden Liberty Bell 🔔 with rim glare and dark clapper."""
+    """3D Golden Liberty Bell with rim glare and dark clapper."""
     pygame.draw.circle(surface, (50, 40, 20), (cx, cy + int(16 * scale)), max(1, int(6 * scale)))
     
     pts = [
@@ -296,7 +296,7 @@ def draw_custom_bell(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_lemon(surface, cx, cy, scale=1.0):
-    """Vibrant Citrus 🍋 Emoji with texture tips and glossy sheen."""
+    """Vibrant Citrus Lemon with texture tips and glossy sheen."""
     w, h = int(48 * scale), int(32 * scale)
     rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
     
@@ -316,7 +316,7 @@ def draw_custom_lemon(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_grape(surface, cx, cy, scale=1.0):
-    """Deep Purple 🍇 Grape Cluster with green leaf stem."""
+    """Deep Purple Grape Cluster with green leaf stem."""
     pygame.draw.line(
         surface,
         (80, 130, 30),
@@ -350,7 +350,7 @@ def draw_custom_grape(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_orange(surface, cx, cy, scale=1.0):
-    """3D Citrus 🍊 Orange Emoji with dimpled shading and sprout leaf."""
+    """3D Citrus Orange with dimpled shading and sprout leaf."""
     r = int(21 * scale)
     
     leaf_pts = [
@@ -386,7 +386,7 @@ def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
 
 
 # ============================================================
-#                         LIVE STATES
+#                          LIVE STATES
 # ============================================================
 
 async def run_slots(balance):
@@ -541,6 +541,7 @@ async def run_slots(balance):
 
                         if spin_phase_timer >= stop_times[idx]:
                             reels_state[idx][0] = final_results[idx]
+                            reels_state[idx][2] = final_results[idx]
                             reels_state[idx][3] = False
                             snd_latch.play()
                         else:
@@ -620,16 +621,20 @@ async def run_slots(balance):
         pygame.draw.rect(screen, GOLD_SHADOW, (150, 80, 500, 130))
         pygame.draw.rect(screen, VINTAGE_GOLD, (152, 82, 496, 126), 2)
 
-        pay_text1 = label_font.render("7-7-7: x30  | BAR-BAR-BAR: x20 | ORANGE x3: x100", True, CHARCOAL)
-        pay_text2 = label_font.render("CHERRY x1: x1  | CHERRY x2: x2  | CHERRY x3: x5", True, CREAM_WHITE)
-        screen.blit(pay_text1, (170, 110))
-        screen.blit(pay_text2, (170, 160))
+        pay_text1 = label_font.render("7: x30 | BAR: x20 | ORANGE: x100 | GRAPE: x60", True, CHARCOAL)
+        pay_text2 = label_font.render("LEMON: x40 | BELL: x10 | CHERRY x1/x2/x3: x1/x2/x5", True, CREAM_WHITE)
+        screen.blit(pay_text1, (160, 100))
+        screen.blit(pay_text2, (160, 150))
 
         # Mini vector icons on marquee
-        draw_custom_seven(screen, 162, 116, scale=0.35)
-        draw_custom_bar(screen, 260, 116, scale=0.45)
-        draw_custom_orange(screen, 400, 116, scale=0.45)
-        draw_custom_cherry(screen, 162, 166, scale=0.45)
+        draw_custom_seven(screen, 172, 124, scale=0.3)
+        draw_custom_bar(screen, 255, 124, scale=0.35)
+        draw_custom_orange(screen, 375, 124, scale=0.35)
+        draw_custom_grape(screen, 495, 124, scale=0.35)
+
+        draw_custom_lemon(screen, 185, 172, scale=0.35)
+        draw_custom_bell(screen, 290, 172, scale=0.35)
+        draw_custom_cherry(screen, 465, 172, scale=0.35)
 
         # Reel Housing
         pygame.draw.rect(screen, CHARCOAL, (146, 236, 508, 138))
@@ -716,3 +721,7 @@ async def run_slots(balance):
         clock.tick(60)
 
     return balance
+
+
+if __name__ == "__main__":
+    asyncio.run(run_slots(100))
