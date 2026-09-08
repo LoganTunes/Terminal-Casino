@@ -59,7 +59,7 @@ def calculate_winnings(reels, bet):
 
 
 # ============================================================
-#              PYGAME VISUAL ENGINE INITIALIZATION
+#               PYGAME VISUAL ENGINE INITIALIZATION
 # ============================================================
 
 pygame.init()
@@ -81,7 +81,7 @@ _GAME_TITLE = "Vintage Vegas Slots - Pure Vector Build"
 
 
 # ============================================================
-#                  PROCEDURAL AUDIO SYNTH DRIVERS
+#                 PROCEDURAL AUDIO SYNTH DRIVERS
 # ============================================================
 
 def generate_synth_sound(
@@ -150,7 +150,7 @@ snd_coin = generate_synth_sound([987, 1318, 1568, 1046], 70, wave_type="square",
 
 
 # ============================================================
-#                          COLOR PALETTE
+#                           COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (10, 68, 33)
@@ -178,15 +178,16 @@ TOKEN_SHINE = (240, 245, 250)
 
 
 # ============================================================
-#                             FONTS
+#                               FONTS
 # ============================================================
 
-ui_font = pygame.font.SysFont("sans-serif", 22, bold=True)
-label_font = pygame.font.SysFont("sans-serif", 13, bold=True)
+ui_font = pygame.font.SysFont("sans-serif", 24, bold=True)
+label_font = pygame.font.SysFont("sans-serif", 18, bold=True)
+button_font = pygame.font.SysFont("sans-serif", 22, bold=True)
 
 
 # ============================================================
-#                HIGH-DETAIL EMOJI VECTOR RENDERERS
+#                 HIGH-DETAIL EMOJI VECTOR RENDERERS
 # ============================================================
 
 def draw_custom_seven(surface, cx, cy, scale=1.0):
@@ -386,7 +387,7 @@ def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
 
 
 # ============================================================
-#                          LIVE STATES
+#                           LIVE STATES
 # ============================================================
 
 async def run_slots(balance):
@@ -429,14 +430,14 @@ async def run_slots(balance):
 
     dec_bet_rect = pygame.Rect(
         190,
-        540,
+        535,
         40,
         35,
     )
 
     inc_bet_rect = pygame.Rect(
         280,
-        540,
+        535,
         40,
         35,
     )
@@ -623,14 +624,14 @@ async def run_slots(balance):
 
         pay_text1 = label_font.render("7: x30 | BAR: x20 | ORANGE: x100 | GRAPE: x60", True, CHARCOAL)
         pay_text2 = label_font.render("LEMON: x40 | BELL: x10 | CHERRY x1/x2/x3: x1/x2/x5", True, CREAM_WHITE)
-        screen.blit(pay_text1, (160, 100))
-        screen.blit(pay_text2, (160, 150))
+        screen.blit(pay_text1, (160, 92))
+        screen.blit(pay_text2, (160, 142))
 
         # Mini vector icons on marquee
-        draw_custom_seven(screen, 172, 124, scale=0.3)
-        draw_custom_bar(screen, 255, 124, scale=0.35)
-        draw_custom_orange(screen, 375, 124, scale=0.35)
-        draw_custom_grape(screen, 495, 124, scale=0.35)
+        draw_custom_seven(screen, 172, 122, scale=0.3)
+        draw_custom_bar(screen, 255, 122, scale=0.35)
+        draw_custom_orange(screen, 375, 122, scale=0.35)
+        draw_custom_grape(screen, 495, 122, scale=0.35)
 
         draw_custom_lemon(screen, 185, 172, scale=0.35)
         draw_custom_bell(screen, 290, 172, scale=0.35)
@@ -677,16 +678,16 @@ async def run_slots(balance):
 
         bal_lbl = label_font.render(f"BANK TOTAL: ${balance}", True, CREAM_WHITE)
         bet_lbl = label_font.render(f"WAGER SELECTION: ${bet_amount}", True, VINTAGE_GOLD)
-        screen.blit(bal_lbl, (170, 460))
-        screen.blit(bet_lbl, (170, 505))
+        screen.blit(bal_lbl, (170, 455))
+        screen.blit(bet_lbl, (170, 495))
 
         # Buttons
         for rect, symbol in [(dec_bet_rect, "-"), (inc_bet_rect, "+")]:
             pygame.draw.rect(screen, RED_SHADOW, rect, 0, 4)
             pygame.draw.rect(screen, BRIGHT_RED, (rect.x, rect.y, rect.width, rect.height - 4), 0, 4)
             pygame.draw.rect(screen, CREAM_WHITE, (rect.x, rect.y, rect.width, rect.height - 4), 1, 4)
-            button_text = label_font.render(symbol, True, CREAM_WHITE)
-            screen.blit(button_text, (rect.centerx - button_text.get_width() // 2, rect.y + 6))
+            button_text = button_font.render(symbol, True, CREAM_WHITE)
+            screen.blit(button_text, (rect.centerx - button_text.get_width() // 2, rect.y + 2))
 
         # Coin Tray
         tray_rect = pygame.Rect(300, 620, 200, 55)
