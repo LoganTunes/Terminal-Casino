@@ -131,7 +131,7 @@ label_font = pygame.font.SysFont("sans-serif", 13, bold=True)
 
 
 # ============================================================
-#                VECTOR SYMBOL RENDERERS
+#                HIGH-DETAIL VECTOR SYMBOLS
 # ============================================================
 
 def draw_custom_seven(surface, cx, cy, scale=1.0):
@@ -148,6 +148,13 @@ def draw_custom_seven(surface, cx, cy, scale=1.0):
     pygame.draw.polygon(surface, VINTAGE_GOLD, pts)
     inner_pts = [(px - int(1 * scale), py - int(1 * scale)) for px, py in pts]
     pygame.draw.polygon(surface, (230, 30, 30), inner_pts)
+    pygame.draw.line(
+        surface,
+        WHITE_GLINT,
+        (cx - int(18 * scale), cy - int(25 * scale)),
+        (cx + int(18 * scale), cy - int(25 * scale)),
+        max(1, int(3 * scale)),
+    )
 
 
 def draw_custom_bar(surface, cx, cy, scale=1.0):
@@ -158,7 +165,7 @@ def draw_custom_bar(surface, cx, cy, scale=1.0):
     inner_rect = pygame.Rect(bar_rect.x + 4, bar_rect.y + 4, bar_rect.width - 8, bar_rect.height - 8)
     pygame.draw.rect(surface, VINTAGE_GOLD, gold_rect, border_radius=max(1, int(4 * scale)))
     pygame.draw.rect(surface, CHARCOAL, inner_rect, border_radius=max(1, int(3 * scale)))
-    bar_font = pygame.font.SysFont("sans-serif", int(14 * scale), bold=True)
+    bar_font = pygame.font.SysFont("sans-serif", max(8, int(16 * scale)), bold=True)
     bar_text = bar_font.render("BAR", True, CREAM_WHITE)
     surface.blit(bar_text, bar_text.get_rect(center=(cx, cy)))
 
@@ -167,47 +174,91 @@ def draw_custom_cherry(surface, cx, cy, scale=1.0):
     p1 = (cx - int(10 * scale), cy + int(6 * scale))
     p2 = (cx + int(10 * scale), cy + int(8 * scale))
     top_stem = (cx + int(3 * scale), cy - int(22 * scale))
+
     pygame.draw.line(surface, (70, 110, 25), p1, top_stem, max(1, int(3 * scale)))
     pygame.draw.line(surface, (85, 130, 30), p2, top_stem, max(1, int(3 * scale)))
+
+    leaf_pts = [
+        top_stem,
+        (top_stem[0] - int(10 * scale), top_stem[1] - int(2 * scale)),
+        (top_stem[0] - int(4 * scale), top_stem[1] + int(6 * scale)),
+    ]
+    pygame.draw.polygon(surface, (110, 175, 40), leaf_pts)
 
     for ox, oy in [(-10, 6), (10, 8)]:
         bx, by = cx + int(ox * scale), cy + int(oy * scale)
         r = int(12 * scale)
         pygame.draw.circle(surface, (130, 10, 25), (bx + 1, by + 1), r)
         pygame.draw.circle(surface, (225, 25, 45), (bx, by), r - 1)
+        pygame.draw.circle(surface, (250, 80, 95), (bx - int(3 * scale), by - int(3 * scale)), int(r * 0.55))
         pygame.draw.circle(surface, WHITE_GLINT, (bx - int(4 * scale), by - int(4 * scale)), max(1, int(2.5 * scale)))
 
 
 def draw_custom_bell(surface, cx, cy, scale=1.0):
+    pygame.draw.circle(surface, (50, 40, 20), (cx, cy + int(16 * scale)), max(1, int(6 * scale)))
     pts = [
         (cx, cy - int(22 * scale)),
+        (cx + int(8 * scale), cy - int(20 * scale)),
         (cx + int(15 * scale), cy - int(8 * scale)),
         (cx + int(23 * scale), cy + int(12 * scale)),
         (cx - int(23 * scale), cy + int(12 * scale)),
         (cx - int(15 * scale), cy - int(8 * scale)),
+        (cx - int(8 * scale), cy - int(20 * scale)),
     ]
     pygame.draw.polygon(surface, (255, 190, 20), pts)
+    shadow_pts = [
+        (cx, cy - int(22 * scale)),
+        (cx + int(8 * scale), cy - int(20 * scale)),
+        (cx + int(15 * scale), cy - int(8 * scale)),
+        (cx + int(23 * scale), cy + int(12 * scale)),
+        (cx, cy + int(12 * scale)),
+    ]
+    pygame.draw.polygon(surface, (215, 140, 10), shadow_pts)
     rim_rect = pygame.Rect(cx - int(25 * scale), cy + int(10 * scale), int(50 * scale), int(7 * scale))
     pygame.draw.ellipse(surface, (255, 215, 70), rim_rect)
+    pygame.draw.ellipse(surface, (180, 110, 0), rim_rect, max(1, int(2 * scale)))
+    pygame.draw.line(
+        surface,
+        WHITE_GLINT,
+        (cx - int(10 * scale), cy - int(12 * scale)),
+        (cx - int(16 * scale), cy + int(8 * scale)),
+        max(1, int(3 * scale)),
+    )
 
 
 def draw_custom_lemon(surface, cx, cy, scale=1.0):
     w, h = int(48 * scale), int(32 * scale)
     rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
+    pygame.draw.circle(surface, (210, 175, 15), (cx - int(23 * scale), cy), max(1, int(4 * scale)))
+    pygame.draw.circle(surface, (210, 175, 15), (cx + int(23 * scale), cy), max(1, int(4 * scale)))
     pygame.draw.ellipse(surface, (255, 225, 30), rect)
+    pygame.draw.arc(surface, (190, 150, 0), rect, 3.14, 6.28, max(1, int(3 * scale)))
+    shine_rect = pygame.Rect(cx - int(16 * scale), cy - int(12 * scale), int(26 * scale), int(14 * scale))
+    pygame.draw.ellipse(surface, (255, 245, 140), shine_rect)
+    pygame.draw.ellipse(surface, WHITE_GLINT, pygame.Rect(cx - int(12 * scale), cy - int(10 * scale), int(12 * scale), int(6 * scale)))
 
 
 def draw_custom_grape(surface, cx, cy, scale=1.0):
-    circles = [(0, -12), (-8, -5), (8, -5), (-12, 3), (0, 3), (12, 3), (0, 19)]
+    pygame.draw.line(surface, (80, 130, 30), (cx, cy - int(14 * scale)), (cx + int(6 * scale), cy - int(24 * scale)), max(1, int(3 * scale)))
+    pygame.draw.polygon(surface, (110, 180, 35), [(cx, cy - int(18 * scale)), (cx - int(12 * scale), cy - int(22 * scale)), (cx - int(4 * scale), cy - int(12 * scale))])
+    circles = [(0, -12), (-8, -5), (8, -5), (-12, 3), (0, 3), (12, 3), (-6, 11), (6, 11), (0, 19)]
     r = int(7.5 * scale)
     for ox, oy in circles:
         bx, by = cx + int(ox * scale), cy + int(oy * scale)
-        pygame.draw.circle(surface, (145, 45, 195), (bx, by), r)
+        pygame.draw.circle(surface, (60, 15, 85), (bx + 1, by + 1), r)
+        pygame.draw.circle(surface, (145, 45, 195), (bx, by), r - 1)
+        pygame.draw.circle(surface, (195, 115, 240), (bx - int(2 * scale), by - int(2 * scale)), int(r * 0.4))
+        pygame.draw.circle(surface, WHITE_GLINT, (bx - int(2.5 * scale), by - int(2.5 * scale)), max(1, int(1.2 * scale)))
 
 
 def draw_custom_orange(surface, cx, cy, scale=1.0):
     r = int(21 * scale)
-    pygame.draw.circle(surface, (255, 140, 25), (cx, cy), r)
+    leaf_pts = [(cx, cy - r), (cx + int(10 * scale), cy - r - int(10 * scale)), (cx + int(2 * scale), cy - r - int(13 * scale))]
+    pygame.draw.polygon(surface, (90, 165, 30), leaf_pts)
+    pygame.draw.circle(surface, (180, 75, 10), (cx + 1, cy + 1), r)
+    pygame.draw.circle(surface, (255, 140, 25), (cx, cy), r - 1)
+    pygame.draw.circle(surface, (255, 180, 70), (cx - int(5 * scale), cy - int(5 * scale)), int(r * 0.65))
+    pygame.draw.circle(surface, WHITE_GLINT, (cx - int(8 * scale), cy - int(8 * scale)), max(1, int(3 * scale)))
 
 
 def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
@@ -266,10 +317,15 @@ async def run_slots(balance):
         pygame.draw.rect(surface, CHROME_SHADOW, rect)
         pygame.draw.rect(surface, CHROME_LIGHT, (rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4))
         pygame.draw.rect(surface, CHROME_BASE, (rect.x + 6, rect.y + 6, rect.width - 12, rect.height - 12))
+        pygame.draw.line(surface, CHROME_LIGHT, (rect.x + 10, rect.y + 30), (rect.x + rect.width - 10, rect.y + 30), 2)
+        pygame.draw.line(surface, CHROME_SHADOW, (rect.x + 10, rect.y + rect.height - 30), (rect.x + rect.width - 10, rect.y + rect.height - 30), 2)
 
     def draw_quarter_token(surface, x, y):
         pygame.draw.ellipse(surface, TOKEN_EDGE, (x - 12, y - 7, 24, 14))
         pygame.draw.ellipse(surface, TOKEN_BASE, (x - 11, y - 6, 22, 12))
+        pygame.draw.ellipse(surface, TOKEN_EDGE, (x - 8, y - 4, 16, 8), 1)
+        pygame.draw.ellipse(surface, TOKEN_SHINE, (x - 6, y - 5, 12, 5))
+        pygame.draw.circle(surface, TOKEN_EDGE, (x, y), 1)
 
     while running:
         for event in pygame.event.get():
@@ -329,7 +385,6 @@ async def run_slots(balance):
                         reels_state[idx][0] = reels_state[idx][2]
 
                         if spin_phase_timer >= stop_times[idx]:
-                            # Lock final symbol to both current and incoming slots
                             reels_state[idx][0] = final_results[idx]
                             reels_state[idx][2] = final_results[idx]
                             reels_state[idx][3] = False
@@ -380,24 +435,44 @@ async def run_slots(balance):
 
         # Top Winner Dome
         light_center_x, light_y = 400, 35
-        dome_color = WHITE_GLINT if (win_light_timer > 0 and (win_light_timer // 10) % 2 == 0) else BRIGHT_RED
+        dome_color, glow_color = (WHITE_GLINT, VINTAGE_GOLD) if (win_light_timer > 0 and (win_light_timer // 10) % 2 == 0) else (BRIGHT_RED, RED_SHADOW)
+        if win_light_timer > 0 and (win_light_timer // 10) % 2 == 0:
+            pygame.draw.circle(screen, glow_color, (light_center_x, light_y + 10), 40)
+        pygame.draw.rect(screen, CHROME_SHADOW, (light_center_x - 30, light_y + 15, 60, 12))
+        pygame.draw.rect(screen, CHROME_LIGHT, (light_center_x - 28, light_y + 15, 56, 6))
         pygame.draw.ellipse(screen, dome_color, (light_center_x - 22, light_y - 15, 44, 32))
+        pygame.draw.ellipse(screen, WHITE_GLINT, (light_center_x - 12, light_y - 10, 10, 8))
 
         # Chrome Cabinet
         draw_brushed_chrome_rect(screen, pygame.Rect(120, 60, 560, 630))
 
-        # Scoring Panel (Clean text layout with no overlapping icons)
+        # Scoring Marquee Panel
         pygame.draw.rect(screen, CHARCOAL, (148, 82, 504, 134))
         pygame.draw.rect(screen, GOLD_SHADOW, (150, 80, 500, 130))
         pygame.draw.rect(screen, VINTAGE_GOLD, (152, 82, 496, 126), 2)
 
-        p1 = label_font.render("7-7-7: x30 | BAR-BAR-BAR: x20 | ORANGE x3: x100", True, CHARCOAL)
-        p2 = label_font.render("GRAPE x3: x60 | LEMON x3: x40 | BELL x3: x10", True, CREAM_WHITE)
-        p3 = label_font.render("CHERRY x1: x1 | CHERRY x2: x2 | CHERRY x3: x5", True, CREAM_WHITE)
+        # Row 1 (Icon + Text items cleanly spaced)
+        draw_custom_seven(screen, 175, 115, scale=0.35)
+        screen.blit(label_font.render("x30", True, CHARCOAL), (195, 108))
 
-        screen.blit(p1, (170, 100))
-        screen.blit(p2, (170, 130))
-        screen.blit(p3, (170, 160))
+        draw_custom_bar(screen, 250, 115, scale=0.4)
+        screen.blit(label_font.render("x20", True, CHARCOAL), (275, 108))
+
+        draw_custom_orange(screen, 330, 115, scale=0.4)
+        screen.blit(label_font.render("x100", True, CHARCOAL), (350, 108))
+
+        draw_custom_grape(screen, 420, 115, scale=0.4)
+        screen.blit(label_font.render("x60", True, CHARCOAL), (440, 108))
+
+        # Row 2
+        draw_custom_lemon(screen, 175, 160, scale=0.4)
+        screen.blit(label_font.render("x40", True, CREAM_WHITE), (195, 153))
+
+        draw_custom_bell(screen, 250, 160, scale=0.4)
+        screen.blit(label_font.render("x10", True, CREAM_WHITE), (275, 153))
+
+        draw_custom_cherry(screen, 330, 160, scale=0.4)
+        screen.blit(label_font.render("x1 / x2 / x5", True, CREAM_WHITE), (350, 153))
 
         # Reel Housing
         pygame.draw.rect(screen, CHARCOAL, (146, 236, 508, 138))
@@ -425,6 +500,9 @@ async def run_slots(balance):
                 render_symbol(screen, incoming_sym, center_x, incoming_center_y)
 
             screen.set_clip(None)
+
+            pygame.draw.rect(screen, (200, 200, 190), (rx, ry, 115, 12))
+            pygame.draw.rect(screen, (200, 200, 190), (rx, ry + 88, 115, 12))
             pygame.draw.rect(screen, CHARCOAL, (rx, ry, 115, 100), 2)
 
         # Data Ticker
@@ -442,6 +520,7 @@ async def run_slots(balance):
         for rect, symbol in [(dec_bet_rect, "-"), (inc_bet_rect, "+")]:
             pygame.draw.rect(screen, RED_SHADOW, rect, 0, 4)
             pygame.draw.rect(screen, BRIGHT_RED, (rect.x, rect.y, rect.width, rect.height - 4), 0, 4)
+            pygame.draw.rect(screen, CREAM_WHITE, (rect.x, rect.y, rect.width, rect.height - 4), 1, 4)
             button_text = label_font.render(symbol, True, CREAM_WHITE)
             screen.blit(button_text, (rect.centerx - button_text.get_width() // 2, rect.y + 6))
 
@@ -457,11 +536,18 @@ async def run_slots(balance):
             if coin['delay'] <= 0:
                 draw_quarter_token(screen, int(coin['x']), int(coin['y']))
 
+        pygame.draw.rect(screen, CHROME_LIGHT, (tray_rect.x, tray_rect.y + 38, tray_rect.width, 17), border_radius=6)
+        pygame.draw.rect(screen, CHROME_SHADOW, (tray_rect.x, tray_rect.y + 38, tray_rect.width, 17), 2, border_radius=6)
+
         # Lever
         lever_knob_rect.y = 240 + lever_offset_y
         pygame.draw.line(screen, CHARCOAL, (684, 314), (789, 264 + lever_offset_y), 14)
         pygame.draw.line(screen, CHROME_LIGHT, (680, 310), (785, 260 + lever_offset_y), 14)
+        pygame.draw.line(screen, CHROME_SHADOW, (680, 312), (785, 262 + lever_offset_y), 6)
+
+        pygame.draw.circle(screen, RED_SHADOW, (787, 262 + lever_offset_y), 24)
         pygame.draw.circle(screen, BRIGHT_RED, (785, 260 + lever_offset_y), 24)
+        pygame.draw.circle(screen, WHITE_GLINT, (776, 252 + lever_offset_y), 6)
 
         _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
         screen.blit(_hint_surf, (10, HEIGHT - 22))
