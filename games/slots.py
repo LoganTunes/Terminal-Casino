@@ -1,12 +1,13 @@
 import asyncio
-import pygame
-import random
-import sys
 import array
 import math
+import random
+import sys
+import pygame
+
 
 # ============================================================
-#         ORIGINAL CASINO MATH ENGINE & GAME LOGIC
+#           ORIGINAL CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 CHERRY = "CHERRY"
@@ -35,11 +36,14 @@ CHERRY_PAYOUTS = {
     3: 5,
 }
 
+
 def spin_reel():
     return random.choices(SLOT_SYMBOLS, weights=SLOT_WEIGHTS, k=1)[0]
 
+
 def spin_slots():
     return [spin_reel(), spin_reel(), spin_reel()]
+
 
 def calculate_winnings(reels, bet):
     cherry_count = reels.count(CHERRY)
@@ -55,47 +59,87 @@ def calculate_winnings(reels, bet):
 
 
 # ============================================================
-#              PYGAME VISUAL ENGINE INITIALIZATION
+#               PYGAME VISUAL ENGINE INITIALIZATION
 # ============================================================
 
 pygame.init()
-pygame.mixer.init(frequency=22050, size=-16, channels=1)
+
+pygame.mixer.init(
+    frequency=22050,
+    size=-16,
+    channels=1,
+)
 
 WIDTH, HEIGHT = 900, 720
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Vintage Vegas Slots")
+pygame.display.set_caption("Vintage Vegas Slots - Vector Build")
 
 clock = pygame.time.Clock()
 _lobby_hint_font = pygame.font.SysFont("sans-serif", 20)
-_GAME_TITLE = "Vintage Vegas Slots"
+_GAME_TITLE = "Vintage Vegas Slots - Vector Build"
 
 
 # ============================================================
-#                  PROCEDURAL AUDIO SYNTH
+#                 PROCEDURAL AUDIO SYNTH DRIVERS
 # ============================================================
 
-def generate_synth_sound(freq_list, duration_ms, wave_type="square", volume=0.3):
+def generate_synth_sound(
+    freq_list,
+    duration_ms,
+    wave_type="square",
+    volume=0.3,
+):
     sample_rate = 22050
     total_samples = int(sample_rate * (duration_ms / 1000.0))
+
     buffer = array.array("h", [0] * total_samples)
     samples_per_freq = total_samples // len(freq_list)
 
     for i in range(total_samples):
-        freq_idx = min(i // samples_per_freq, len(freq_list) - 1)
+        freq_idx = min(
+            i // samples_per_freq,
+            len(freq_list) - 1,
+        )
+
         freq = freq_list[freq_idx]
+
         if freq == 0:
             val = 0
         else:
             t = i / sample_rate
+
             if wave_type == "square":
-                val = 32767 if math.sin(2 * math.pi * freq * t) >= 0 else -32768
+                val = (
+                    32767
+                    if math.sin(2 * math.pi * freq * t) >= 0
+                    else -32768
+                )
             elif wave_type == "triangle":
-                val = int(32767 * (2.0 * math.fabs(2.0 * (t * freq - math.floor(t * freq + 0.5))) - 1.0))
+                val = int(
+                    32767
+                    * (
+                        2.0
+                        * math.fabs(
+                            2.0
+                            * (
+                                t * freq
+                                - math.floor(t * freq + 0.5)
+                            )
+                        )
+                        - 1.0
+                    )
+                )
             else:
-                val = int(32767 * math.sin(2 * math.pi * freq * t))
+                val = int(
+                    32767
+                    * math.sin(2 * math.pi * freq * t)
+                )
+
         buffer[i] = int(val * volume)
 
     return pygame.mixer.Sound(buffer=buffer)
+
 
 snd_lever = generate_synth_sound([120, 80, 50], 120, wave_type="triangle", volume=0.5)
 snd_click = generate_synth_sound([800, 0], 15, wave_type="square", volume=0.1)
@@ -106,35 +150,47 @@ snd_coin = generate_synth_sound([987, 1318, 1568, 1046], 70, wave_type="square",
 
 
 # ============================================================
-#                          COLOR PALETTE
+#                         COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (10, 68, 33)
 MAHOGANY = (56, 18, 11)
 WOOD_LIGHT = (84, 30, 20)
+
 CHROME_BASE = (175, 175, 175)
 CHROME_LIGHT = (220, 220, 220)
 CHROME_SHADOW = (110, 110, 110)
+
 VINTAGE_GOLD = (212, 163, 89)
 GOLD_SHADOW = (145, 105, 45)
+
 CREAM_WHITE = (247, 245, 230)
 CHARCOAL = (24, 24, 24)
+
 BRIGHT_RED = (210, 25, 25)
 RED_SHADOW = (120, 10, 10)
+
 WHITE_GLINT = (255, 255, 255)
+
 TOKEN_EDGE = (90, 95, 100)
 TOKEN_BASE = (200, 205, 210)
 TOKEN_SHINE = (240, 245, 250)
 
+
+# ============================================================
+#                               FONTS
+# ============================================================
+
 ui_font = pygame.font.SysFont("sans-serif", 22, bold=True)
-label_font = pygame.font.SysFont("sans-serif", 13, bold=True)
+label_font = pygame.font.SysFont("sans-serif", 15, bold=True)
 
 
 # ============================================================
-#                HIGH-DETAIL VECTOR SYMBOLS
+#                HIGH-DETAIL VECTOR RENDERERS
 # ============================================================
 
 def draw_custom_seven(surface, cx, cy, scale=1.0):
+    """3D Metallic Red '7' with gold outline and specular highlight."""
     pts = [
         (cx - int(22 * scale), cy - int(28 * scale)),
         (cx + int(22 * scale), cy - int(28 * scale)),
@@ -146,6 +202,7 @@ def draw_custom_seven(surface, cx, cy, scale=1.0):
     shadow_pts = [(px + int(3 * scale), py + int(3 * scale)) for px, py in pts]
     pygame.draw.polygon(surface, GOLD_SHADOW, shadow_pts)
     pygame.draw.polygon(surface, VINTAGE_GOLD, pts)
+    
     inner_pts = [(px - int(1 * scale), py - int(1 * scale)) for px, py in pts]
     pygame.draw.polygon(surface, (230, 30, 30), inner_pts)
     pygame.draw.line(
@@ -158,26 +215,32 @@ def draw_custom_seven(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_bar(surface, cx, cy, scale=1.0):
+    """3D Metallic Beveled BAR Badge with dual borders."""
     w, h = int(76 * scale), int(36 * scale)
     bar_rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
+
     pygame.draw.rect(surface, (15, 15, 20), bar_rect, border_radius=max(1, int(5 * scale)))
+    
     gold_rect = pygame.Rect(bar_rect.x + 2, bar_rect.y + 2, bar_rect.width - 4, bar_rect.height - 4)
     inner_rect = pygame.Rect(bar_rect.x + 4, bar_rect.y + 4, bar_rect.width - 8, bar_rect.height - 8)
+
     pygame.draw.rect(surface, VINTAGE_GOLD, gold_rect, border_radius=max(1, int(4 * scale)))
     pygame.draw.rect(surface, CHARCOAL, inner_rect, border_radius=max(1, int(3 * scale)))
-    bar_font = pygame.font.SysFont("sans-serif", max(8, int(16 * scale)), bold=True)
+
+    bar_font = pygame.font.SysFont("sans-serif", int(16 * scale), bold=True)
     bar_text = bar_font.render("BAR", True, CREAM_WHITE)
     surface.blit(bar_text, bar_text.get_rect(center=(cx, cy)))
 
 
 def draw_custom_cherry(surface, cx, cy, scale=1.0):
+    """Glossy Cherry vector rendering with curved stems and leaf."""
     p1 = (cx - int(10 * scale), cy + int(6 * scale))
     p2 = (cx + int(10 * scale), cy + int(8 * scale))
     top_stem = (cx + int(3 * scale), cy - int(22 * scale))
 
     pygame.draw.line(surface, (70, 110, 25), p1, top_stem, max(1, int(3 * scale)))
     pygame.draw.line(surface, (85, 130, 30), p2, top_stem, max(1, int(3 * scale)))
-
+    
     leaf_pts = [
         top_stem,
         (top_stem[0] - int(10 * scale), top_stem[1] - int(2 * scale)),
@@ -188,6 +251,7 @@ def draw_custom_cherry(surface, cx, cy, scale=1.0):
     for ox, oy in [(-10, 6), (10, 8)]:
         bx, by = cx + int(ox * scale), cy + int(oy * scale)
         r = int(12 * scale)
+        
         pygame.draw.circle(surface, (130, 10, 25), (bx + 1, by + 1), r)
         pygame.draw.circle(surface, (225, 25, 45), (bx, by), r - 1)
         pygame.draw.circle(surface, (250, 80, 95), (bx - int(3 * scale), by - int(3 * scale)), int(r * 0.55))
@@ -195,7 +259,9 @@ def draw_custom_cherry(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_bell(surface, cx, cy, scale=1.0):
+    """3D Golden Liberty Bell with rim glare and dark clapper."""
     pygame.draw.circle(surface, (50, 40, 20), (cx, cy + int(16 * scale)), max(1, int(6 * scale)))
+    
     pts = [
         (cx, cy - int(22 * scale)),
         (cx + int(8 * scale), cy - int(20 * scale)),
@@ -206,6 +272,7 @@ def draw_custom_bell(surface, cx, cy, scale=1.0):
         (cx - int(8 * scale), cy - int(20 * scale)),
     ]
     pygame.draw.polygon(surface, (255, 190, 20), pts)
+    
     shadow_pts = [
         (cx, cy - int(22 * scale)),
         (cx + int(8 * scale), cy - int(20 * scale)),
@@ -214,9 +281,11 @@ def draw_custom_bell(surface, cx, cy, scale=1.0):
         (cx, cy + int(12 * scale)),
     ]
     pygame.draw.polygon(surface, (215, 140, 10), shadow_pts)
+    
     rim_rect = pygame.Rect(cx - int(25 * scale), cy + int(10 * scale), int(50 * scale), int(7 * scale))
     pygame.draw.ellipse(surface, (255, 215, 70), rim_rect)
     pygame.draw.ellipse(surface, (180, 110, 0), rim_rect, max(1, int(2 * scale)))
+    
     pygame.draw.line(
         surface,
         WHITE_GLINT,
@@ -227,22 +296,51 @@ def draw_custom_bell(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_lemon(surface, cx, cy, scale=1.0):
+    """Citrus Lemon vector rendering with texture tips and glossy sheen."""
     w, h = int(48 * scale), int(32 * scale)
     rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
+    
     pygame.draw.circle(surface, (210, 175, 15), (cx - int(23 * scale), cy), max(1, int(4 * scale)))
     pygame.draw.circle(surface, (210, 175, 15), (cx + int(23 * scale), cy), max(1, int(4 * scale)))
+
     pygame.draw.ellipse(surface, (255, 225, 30), rect)
     pygame.draw.arc(surface, (190, 150, 0), rect, 3.14, 6.28, max(1, int(3 * scale)))
+    
     shine_rect = pygame.Rect(cx - int(16 * scale), cy - int(12 * scale), int(26 * scale), int(14 * scale))
     pygame.draw.ellipse(surface, (255, 245, 140), shine_rect)
-    pygame.draw.ellipse(surface, WHITE_GLINT, pygame.Rect(cx - int(12 * scale), cy - int(10 * scale), int(12 * scale), int(6 * scale)))
+    pygame.draw.ellipse(
+        surface,
+        WHITE_GLINT,
+        pygame.Rect(cx - int(12 * scale), cy - int(10 * scale), int(12 * scale), int(6 * scale)),
+    )
 
 
 def draw_custom_grape(surface, cx, cy, scale=1.0):
-    pygame.draw.line(surface, (80, 130, 30), (cx, cy - int(14 * scale)), (cx + int(6 * scale), cy - int(24 * scale)), max(1, int(3 * scale)))
-    pygame.draw.polygon(surface, (110, 180, 35), [(cx, cy - int(18 * scale)), (cx - int(12 * scale), cy - int(22 * scale)), (cx - int(4 * scale), cy - int(12 * scale))])
-    circles = [(0, -12), (-8, -5), (8, -5), (-12, 3), (0, 3), (12, 3), (-6, 11), (6, 11), (0, 19)]
+    """Grape Cluster vector rendering with green leaf stem."""
+    pygame.draw.line(
+        surface,
+        (80, 130, 30),
+        (cx, cy - int(14 * scale)),
+        (cx + int(6 * scale), cy - int(24 * scale)),
+        max(1, int(3 * scale)),
+    )
+    pygame.draw.polygon(
+        surface,
+        (110, 180, 35),
+        [
+            (cx, cy - int(18 * scale)),
+            (cx - int(12 * scale), cy - int(22 * scale)),
+            (cx - int(4 * scale), cy - int(12 * scale)),
+        ],
+    )
+
+    circles = [
+        (0, -12), (-8, -5), (8, -5),
+        (-12, 3), (0, 3), (12, 3),
+        (-6, 11), (6, 11), (0, 19),
+    ]
     r = int(7.5 * scale)
+    
     for ox, oy in circles:
         bx, by = cx + int(ox * scale), cy + int(oy * scale)
         pygame.draw.circle(surface, (60, 15, 85), (bx + 1, by + 1), r)
@@ -252,40 +350,46 @@ def draw_custom_grape(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_orange(surface, cx, cy, scale=1.0):
+    """3D Citrus Orange with dimpled shading and sprout leaf."""
     r = int(21 * scale)
-    leaf_pts = [(cx, cy - r), (cx + int(10 * scale), cy - r - int(10 * scale)), (cx + int(2 * scale), cy - r - int(13 * scale))]
+    
+    leaf_pts = [
+        (cx, cy - r),
+        (cx + int(10 * scale), cy - r - int(10 * scale)),
+        (cx + int(2 * scale), cy - r - int(13 * scale)),
+    ]
     pygame.draw.polygon(surface, (90, 165, 30), leaf_pts)
+
     pygame.draw.circle(surface, (180, 75, 10), (cx + 1, cy + 1), r)
     pygame.draw.circle(surface, (255, 140, 25), (cx, cy), r - 1)
+    
     pygame.draw.circle(surface, (255, 180, 70), (cx - int(5 * scale), cy - int(5 * scale)), int(r * 0.65))
     pygame.draw.circle(surface, WHITE_GLINT, (cx - int(8 * scale), cy - int(8 * scale)), max(1, int(3 * scale)))
 
 
 def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
-    if not symbol:
-        return
-    sym = str(symbol).upper()
-    if sym in ("7", "SEVEN"):
+    """Direct visual dispatcher mapping symbol keys to custom vector graphics."""
+    if symbol in ("7", SEVEN, "SEVEN"):
         draw_custom_seven(surface, center_x, center_y, scale)
-    elif sym == "BAR":
+    elif symbol in ("BAR", BAR, "bar"):
         draw_custom_bar(surface, center_x, center_y, scale)
-    elif sym == "CHERRY":
+    elif symbol in ("CHERRY", CHERRY, "cherry"):
         draw_custom_cherry(surface, center_x, center_y, scale)
-    elif sym == "BELL":
+    elif symbol in ("BELL", BELL, "bell"):
         draw_custom_bell(surface, center_x, center_y, scale)
-    elif sym == "LEMON":
+    elif symbol in ("LEMON", LEMON, "lemon"):
         draw_custom_lemon(surface, center_x, center_y, scale)
-    elif sym == "GRAPE":
+    elif symbol in ("GRAPE", GRAPE, "grape"):
         draw_custom_grape(surface, center_x, center_y, scale)
-    elif sym == "ORANGE":
+    elif symbol in ("ORANGE", ORANGE, "orange"):
         draw_custom_orange(surface, center_x, center_y, scale)
 
 
 # ============================================================
-#                          MAIN LOOP
+#                         LIVE STATES
 # ============================================================
 
-async def run_slots(balance):
+async def run_slots(balance=100):
     global screen
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(_GAME_TITLE)
@@ -293,15 +397,22 @@ async def run_slots(balance):
     bet_amount = 10
 
     win_message = "WELCOME HIGH ROLLER! PULL LEVER TO SPIN."
+
     win_light_timer = 0
-    active_coins, tray_coins = [], []
+    active_coins = []
+    tray_coins = []
 
     reels_state = [
         [SEVEN, 0, CHERRY, False],
         [SEVEN, 0, BELL, False],
         [SEVEN, 0, BAR, False],
     ]
-    final_results = [SEVEN, SEVEN, SEVEN]
+
+    final_results = [
+        SEVEN,
+        SEVEN,
+        SEVEN,
+    ]
 
     is_spinning = False
     spin_phase_timer = 0
@@ -309,16 +420,53 @@ async def run_slots(balance):
     lever_state = 0
     lever_offset_y = 0
 
-    lever_knob_rect = pygame.Rect(760, 240, 50, 50)
-    dec_bet_rect = pygame.Rect(190, 540, 40, 35)
-    inc_bet_rect = pygame.Rect(280, 540, 40, 35)
+    lever_knob_rect = pygame.Rect(
+        760,
+        240,
+        50,
+        50,
+    )
+
+    dec_bet_rect = pygame.Rect(
+        190,
+        540,
+        40,
+        35,
+    )
+
+    inc_bet_rect = pygame.Rect(
+        280,
+        540,
+        40,
+        35,
+    )
 
     def draw_brushed_chrome_rect(surface, rect):
         pygame.draw.rect(surface, CHROME_SHADOW, rect)
-        pygame.draw.rect(surface, CHROME_LIGHT, (rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4))
-        pygame.draw.rect(surface, CHROME_BASE, (rect.x + 6, rect.y + 6, rect.width - 12, rect.height - 12))
-        pygame.draw.line(surface, CHROME_LIGHT, (rect.x + 10, rect.y + 30), (rect.x + rect.width - 10, rect.y + 30), 2)
-        pygame.draw.line(surface, CHROME_SHADOW, (rect.x + 10, rect.y + rect.height - 30), (rect.x + rect.width - 10, rect.y + rect.height - 30), 2)
+        pygame.draw.rect(
+            surface,
+            CHROME_LIGHT,
+            (rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4),
+        )
+        pygame.draw.rect(
+            surface,
+            CHROME_BASE,
+            (rect.x + 6, rect.y + 6, rect.width - 12, rect.height - 12),
+        )
+        pygame.draw.line(
+            surface,
+            CHROME_LIGHT,
+            (rect.x + 10, rect.y + 30),
+            (rect.x + rect.width - 10, rect.y + 30),
+            2,
+        )
+        pygame.draw.line(
+            surface,
+            CHROME_SHADOW,
+            (rect.x + 10, rect.y + rect.height - 30),
+            (rect.x + rect.width - 10, rect.y + rect.height - 30),
+            2,
+        )
 
     def draw_quarter_token(surface, x, y):
         pygame.draw.ellipse(surface, TOKEN_EDGE, (x - 12, y - 7, 24, 14))
@@ -334,8 +482,10 @@ async def run_slots(balance):
                 sys.exit()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
+
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
+
                 if not is_spinning and lever_state == 0:
                     if lever_knob_rect.collidepoint(mouse_pos):
                         lever_state = 1
@@ -343,12 +493,16 @@ async def run_slots(balance):
                         active_coins.clear()
                         tray_coins.clear()
                         snd_lever.play()
+
                     elif inc_bet_rect.collidepoint(mouse_pos):
                         if bet_amount + 5 <= balance:
                             bet_amount += 5
+                        win_message = ""
+
                     elif dec_bet_rect.collidepoint(mouse_pos):
                         if bet_amount - 5 >= 5:
                             bet_amount -= 5
+                        win_message = ""
 
         if lever_state == 1:
             lever_offset_y += 15
@@ -362,7 +516,7 @@ async def run_slots(balance):
                     for reel in reels_state:
                         reel[3] = True
                 else:
-                    win_message = "INSUFFICIENT FUNDS!"
+                    win_message = "INSUFFICIENT FUNDS! LOWER WAGER TICKER."
 
         elif lever_state == 2:
             lever_offset_y -= 25
@@ -372,6 +526,7 @@ async def run_slots(balance):
 
         if is_spinning:
             spin_phase_timer += 1
+
             if spin_phase_timer % 4 == 0 and any(reel[3] for reel in reels_state):
                 snd_click.play()
 
@@ -386,7 +541,6 @@ async def run_slots(balance):
 
                         if spin_phase_timer >= stop_times[idx]:
                             reels_state[idx][0] = final_results[idx]
-                            reels_state[idx][2] = final_results[idx]
                             reels_state[idx][3] = False
                             snd_latch.play()
                         else:
@@ -415,6 +569,9 @@ async def run_slots(balance):
                     win_message = "NO MATCH. BETTER LUCK NEXT SPIN!"
                     snd_loser.play()
 
+                if balance <= 0:
+                    win_message = "OUT OF CHIPS! RE-RUN GAME TO RESET."
+
         if win_light_timer > 0:
             win_light_timer -= 1
 
@@ -422,12 +579,21 @@ async def run_slots(balance):
             if coin['delay'] > 0:
                 coin['delay'] -= 1
                 continue
+
             coin['x'] += coin['vx']
             coin['y'] += coin['vy']
             coin['vy'] += 0.5
+
+            if coin['vy'] > 0 and 'played' not in coin:
+                snd_coin.play()
+                coin['played'] = True
+
             if coin['y'] >= 655:
                 tray_coins.append((int(coin['x']), random.randint(650, 665)))
                 active_coins.remove(coin)
+
+        if len(tray_coins) > 120:
+            tray_coins = tray_coins[-120:]
 
         screen.fill(MAHOGANY)
         pygame.draw.rect(screen, WOOD_LIGHT, (10, 10, WIDTH - 20, HEIGHT - 20), 10)
@@ -435,9 +601,12 @@ async def run_slots(balance):
 
         # Top Winner Dome
         light_center_x, light_y = 400, 35
-        dome_color, glow_color = (WHITE_GLINT, VINTAGE_GOLD) if (win_light_timer > 0 and (win_light_timer // 10) % 2 == 0) else (BRIGHT_RED, RED_SHADOW)
         if win_light_timer > 0 and (win_light_timer // 10) % 2 == 0:
+            dome_color, glow_color = WHITE_GLINT, VINTAGE_GOLD
             pygame.draw.circle(screen, glow_color, (light_center_x, light_y + 10), 40)
+        else:
+            dome_color, glow_color = BRIGHT_RED, RED_SHADOW
+
         pygame.draw.rect(screen, CHROME_SHADOW, (light_center_x - 30, light_y + 15, 60, 12))
         pygame.draw.rect(screen, CHROME_LIGHT, (light_center_x - 28, light_y + 15, 56, 6))
         pygame.draw.ellipse(screen, dome_color, (light_center_x - 22, light_y - 15, 44, 32))
@@ -446,33 +615,21 @@ async def run_slots(balance):
         # Chrome Cabinet
         draw_brushed_chrome_rect(screen, pygame.Rect(120, 60, 560, 630))
 
-        # Scoring Marquee Panel
+        # Scoring Panel
         pygame.draw.rect(screen, CHARCOAL, (148, 82, 504, 134))
         pygame.draw.rect(screen, GOLD_SHADOW, (150, 80, 500, 130))
         pygame.draw.rect(screen, VINTAGE_GOLD, (152, 82, 496, 126), 2)
 
-        # Row 1 (Icon + Text items cleanly spaced)
-        draw_custom_seven(screen, 175, 115, scale=0.35)
-        screen.blit(label_font.render("x30", True, CHARCOAL), (195, 108))
+        pay_text1 = label_font.render("7-7-7: x30  | BAR-BAR-BAR: x20 | ORANGE x3: x100", True, CHARCOAL)
+        pay_text2 = label_font.render("CHERRY x1: x1  | CHERRY x2: x2  | CHERRY x3: x5", True, CREAM_WHITE)
+        screen.blit(pay_text1, (170, 110))
+        screen.blit(pay_text2, (170, 160))
 
-        draw_custom_bar(screen, 250, 115, scale=0.4)
-        screen.blit(label_font.render("x20", True, CHARCOAL), (275, 108))
-
-        draw_custom_orange(screen, 330, 115, scale=0.4)
-        screen.blit(label_font.render("x100", True, CHARCOAL), (350, 108))
-
-        draw_custom_grape(screen, 420, 115, scale=0.4)
-        screen.blit(label_font.render("x60", True, CHARCOAL), (440, 108))
-
-        # Row 2
-        draw_custom_lemon(screen, 175, 160, scale=0.4)
-        screen.blit(label_font.render("x40", True, CREAM_WHITE), (195, 153))
-
-        draw_custom_bell(screen, 250, 160, scale=0.4)
-        screen.blit(label_font.render("x10", True, CREAM_WHITE), (275, 153))
-
-        draw_custom_cherry(screen, 330, 160, scale=0.4)
-        screen.blit(label_font.render("x1 / x2 / x5", True, CREAM_WHITE), (350, 153))
+        # Mini vector icons on marquee
+        draw_custom_seven(screen, 162, 116, scale=0.35)
+        draw_custom_bar(screen, 260, 116, scale=0.45)
+        draw_custom_orange(screen, 400, 116, scale=0.45)
+        draw_custom_cherry(screen, 162, 166, scale=0.45)
 
         # Reel Housing
         pygame.draw.rect(screen, CHARCOAL, (146, 236, 508, 138))
@@ -507,6 +664,8 @@ async def run_slots(balance):
 
         # Data Ticker
         pygame.draw.rect(screen, CHARCOAL, (150, 400, 500, 180))
+        pygame.draw.rect(screen, CHROME_SHADOW, (150, 400, 500, 180), 3)
+
         message_color = VINTAGE_GOLD if ("WINNER" in win_message or "WELCOME" in win_message) else BRIGHT_RED
         msg_surf = ui_font.render(win_message, True, message_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2 - 50, 415))
@@ -557,6 +716,7 @@ async def run_slots(balance):
         clock.tick(60)
 
     return balance
+
 
 if __name__ == "__main__":
     asyncio.run(run_slots(100))
