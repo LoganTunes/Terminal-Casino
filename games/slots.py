@@ -181,9 +181,11 @@ TOKEN_SHINE = (240, 245, 250)
 #                               FONTS
 # ============================================================
 
-ui_font = pygame.font.SysFont("sans-serif", 24, bold=True)
-label_font = pygame.font.SysFont("sans-serif", 18, bold=True)
-button_font = pygame.font.SysFont("sans-serif", 22, bold=True)
+# Increased font sizes for readability
+ui_font = pygame.font.SysFont("sans-serif", 22, bold=True)
+label_font = pygame.font.SysFont("sans-serif", 22, bold=True)
+marquee_font = pygame.font.SysFont("sans-serif", 20, bold=True)
+button_font = pygame.font.SysFont("sans-serif", 26, bold=True)
 
 
 # ============================================================
@@ -191,7 +193,6 @@ button_font = pygame.font.SysFont("sans-serif", 22, bold=True)
 # ============================================================
 
 def draw_custom_seven(surface, cx, cy, scale=1.0):
-    """3D Metallic Red '7' with beveling and gold outline."""
     pts = [
         (cx - int(22 * scale), cy - int(28 * scale)),
         (cx + int(22 * scale), cy - int(28 * scale)),
@@ -216,7 +217,6 @@ def draw_custom_seven(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_bar(surface, cx, cy, scale=1.0):
-    """3D Metallic Beveled BAR Badge."""
     w, h = int(76 * scale), int(36 * scale)
     bar_rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
 
@@ -234,7 +234,6 @@ def draw_custom_bar(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_cherry(surface, cx, cy, scale=1.0):
-    """Glossy Cherry Emoji match with curved stems and leaf."""
     p1 = (cx - int(10 * scale), cy + int(6 * scale))
     p2 = (cx + int(10 * scale), cy + int(8 * scale))
     top_stem = (cx + int(3 * scale), cy - int(22 * scale))
@@ -254,13 +253,12 @@ def draw_custom_cherry(surface, cx, cy, scale=1.0):
         r = int(12 * scale)
         
         pygame.draw.circle(surface, (130, 10, 25), (bx + 1, by + 1), r)
-        pygame.draw.circle(surface, (225, 25, 45), (bx, by), r - 1)
+        pygame.draw.circle(surface, (225, 25, 45), (bx), r - 1)
         pygame.draw.circle(surface, (250, 80, 95), (bx - int(3 * scale), by - int(3 * scale)), int(r * 0.55))
         pygame.draw.circle(surface, WHITE_GLINT, (bx - int(4 * scale), by - int(4 * scale)), max(1, int(2.5 * scale)))
 
 
 def draw_custom_bell(surface, cx, cy, scale=1.0):
-    """3D Golden Liberty Bell with rim glare and dark clapper."""
     pygame.draw.circle(surface, (50, 40, 20), (cx, cy + int(16 * scale)), max(1, int(6 * scale)))
     
     pts = [
@@ -297,7 +295,6 @@ def draw_custom_bell(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_lemon(surface, cx, cy, scale=1.0):
-    """Vibrant Citrus Lemon with texture tips and glossy sheen."""
     w, h = int(48 * scale), int(32 * scale)
     rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
     
@@ -317,7 +314,6 @@ def draw_custom_lemon(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_grape(surface, cx, cy, scale=1.0):
-    """Deep Purple Grape Cluster with green leaf stem."""
     pygame.draw.line(
         surface,
         (80, 130, 30),
@@ -351,7 +347,6 @@ def draw_custom_grape(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_orange(surface, cx, cy, scale=1.0):
-    """3D Citrus Orange with dimpled shading and sprout leaf."""
     r = int(21 * scale)
     
     leaf_pts = [
@@ -369,7 +364,6 @@ def draw_custom_orange(surface, cx, cy, scale=1.0):
 
 
 def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
-    """Direct visual dispatcher accepting constants, strings, and emoji format variants."""
     if symbol in ("7", SEVEN, "SEVEN"):
         draw_custom_seven(surface, center_x, center_y, scale)
     elif symbol in ("BAR", BAR, "bar"):
@@ -428,18 +422,19 @@ async def run_slots(balance):
         50,
     )
 
+    # Adjust button targets slightly for wider text display
     dec_bet_rect = pygame.Rect(
-        190,
-        535,
-        40,
-        35,
+        420,
+        518,
+        45,
+        38,
     )
 
     inc_bet_rect = pygame.Rect(
-        280,
-        535,
-        40,
-        35,
+        475,
+        518,
+        45,
+        38,
     )
 
     def draw_brushed_chrome_rect(surface, rect):
@@ -617,25 +612,26 @@ async def run_slots(balance):
         # Chrome Cabinet
         draw_brushed_chrome_rect(screen, pygame.Rect(120, 60, 560, 630))
 
-        # Scoring Panel
+        # Scoring Panel / Marquee
         pygame.draw.rect(screen, CHARCOAL, (148, 82, 504, 134))
         pygame.draw.rect(screen, GOLD_SHADOW, (150, 80, 500, 130))
         pygame.draw.rect(screen, VINTAGE_GOLD, (152, 82, 496, 126), 2)
 
-        pay_text1 = label_font.render("7: x30 | BAR: x20 | ORANGE: x100 | GRAPE: x60", True, CHARCOAL)
-        pay_text2 = label_font.render("LEMON: x40 | BELL: x10 | CHERRY x1/x2/x3: x1/x2/x5", True, CREAM_WHITE)
-        screen.blit(pay_text1, (160, 92))
-        screen.blit(pay_text2, (160, 142))
+        # Vector icons on marquee
+        draw_custom_seven(screen, 180, 108, scale=0.35)
+        draw_custom_bar(screen, 265, 108, scale=0.4)
+        draw_custom_orange(screen, 385, 108, scale=0.4)
+        draw_custom_grape(screen, 505, 108, scale=0.4)
 
-        # Mini vector icons on marquee
-        draw_custom_seven(screen, 172, 122, scale=0.3)
-        draw_custom_bar(screen, 255, 122, scale=0.35)
-        draw_custom_orange(screen, 375, 122, scale=0.35)
-        draw_custom_grape(screen, 495, 122, scale=0.35)
+        draw_custom_lemon(screen, 195, 158, scale=0.4)
+        draw_custom_bell(screen, 310, 158, scale=0.4)
+        draw_custom_cherry(screen, 480, 158, scale=0.4)
 
-        draw_custom_lemon(screen, 185, 172, scale=0.35)
-        draw_custom_bell(screen, 290, 172, scale=0.35)
-        draw_custom_cherry(screen, 465, 172, scale=0.35)
+        # Re-aligned marquee text directly under icons with reduced gap
+        pay_text1 = marquee_font.render("7: x30 | BAR: x20 | ORANGE: x100 | GRAPE: x60", True, CHARCOAL)
+        pay_text2 = marquee_font.render("LEMON: x40 | BELL: x10 | CHERRY: x1/x2/x5", True, CREAM_WHITE)
+        screen.blit(pay_text1, (162, 126))
+        screen.blit(pay_text2, (162, 176))
 
         # Reel Housing
         pygame.draw.rect(screen, CHARCOAL, (146, 236, 508, 138))
@@ -676,18 +672,19 @@ async def run_slots(balance):
         msg_surf = ui_font.render(win_message, True, message_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2 - 50, 415))
 
+        # Larger, bolded readout text
         bal_lbl = label_font.render(f"BANK TOTAL: ${balance}", True, CREAM_WHITE)
         bet_lbl = label_font.render(f"WAGER SELECTION: ${bet_amount}", True, VINTAGE_GOLD)
-        screen.blit(bal_lbl, (170, 455))
-        screen.blit(bet_lbl, (170, 495))
+        screen.blit(bal_lbl, (170, 465))
+        screen.blit(bet_lbl, (170, 520))
 
-        # Buttons
+        # Bet buttons
         for rect, symbol in [(dec_bet_rect, "-"), (inc_bet_rect, "+")]:
             pygame.draw.rect(screen, RED_SHADOW, rect, 0, 4)
             pygame.draw.rect(screen, BRIGHT_RED, (rect.x, rect.y, rect.width, rect.height - 4), 0, 4)
             pygame.draw.rect(screen, CREAM_WHITE, (rect.x, rect.y, rect.width, rect.height - 4), 1, 4)
             button_text = button_font.render(symbol, True, CREAM_WHITE)
-            screen.blit(button_text, (rect.centerx - button_text.get_width() // 2, rect.y + 2))
+            screen.blit(button_text, (rect.centerx - button_text.get_width() // 2, rect.y - 1))
 
         # Coin Tray
         tray_rect = pygame.Rect(300, 620, 200, 55)
