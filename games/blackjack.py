@@ -169,6 +169,38 @@ BRIGHT_RED = (190, 25, 25)
 
 
 # ============================================================
+#                    VECTOR SUIT DRAWING
+# ============================================================
+
+def draw_vector_suit(surface, suit, cx, cy, size, color):
+    """Draws crisp vector suit icons directly onto card surfaces."""
+    if suit == "♥":
+        r = size // 4
+        pygame.draw.circle(surface, color, (cx - r, cy - r // 2), r)
+        pygame.draw.circle(surface, color, (cx + r, cy - r // 2), r)
+        pts = [(cx - size // 2, cy - r // 4), (cx + size // 2, cy - r // 4), (cx, cy + size // 2)]
+        pygame.draw.polygon(surface, color, pts)
+    elif suit == "♦":
+        pts = [(cx, cy - size // 2), (cx + size // 2, cy), (cx, cy + size // 2), (cx - size // 2, cy)]
+        pygame.draw.polygon(surface, color, pts)
+    elif suit == "♣":
+        r = size // 4
+        pygame.draw.circle(surface, color, (cx - r, cy + r // 4), r)
+        pygame.draw.circle(surface, color, (cx + r, cy + r // 4), r)
+        pygame.draw.circle(surface, color, (cx, cy - r), r)
+        stem = [(cx - 2, cy), (cx + 2, cy), (cx + 4, cy + size // 2), (cx - 4, cy + size // 2)]
+        pygame.draw.polygon(surface, color, stem)
+    elif suit == "♠":
+        r = size // 4
+        pygame.draw.circle(surface, color, (cx - r, cy), r)
+        pygame.draw.circle(surface, color, (cx + r, cy), r)
+        pts = [(cx - size // 2, cy), (cx + size // 2, cy), (cx, cy - size // 2)]
+        pygame.draw.polygon(surface, color, pts)
+        stem = [(cx - 2, cy), (cx + 2, cy), (cx + 4, cy + size // 2), (cx - 4, cy + size // 2)]
+        pygame.draw.polygon(surface, color, stem)
+
+
+# ============================================================
 #                    ANIMATED CARD CLASS
 # ============================================================
 
@@ -208,16 +240,16 @@ class AnimatedCard:
                 snd_card_slide.play()
 
 
-def draw_card_surface(card_data, card_num_font, card_suit_font, facedown=False, flip_scale=1.0):
-    width = int(75 * abs(flip_scale))
-    height = 110
+def draw_card_surface(card_data, card_num_font, facedown=False, flip_scale=1.0):
+    width = int(85 * abs(flip_scale))
+    height = 120
     if width < 1:
         return None
 
     surf = pygame.Surface((width, height), pygame.SRCALPHA)
 
     if facedown or flip_scale < 0:
-        pygame.draw.rect(surf, WOOD_LIGHT, (0, 0, width, height), 0, 5)
+        pygame.draw.rect(surf, WOOD_LIGHT, (0, 0, width, height), 0, 6)
         pygame.draw.rect(
             surf, VINTAGE_GOLD, (3, 3, max(1, width - 6), height - 6), 2, 4
         )
@@ -226,40 +258,39 @@ def draw_card_surface(card_data, card_num_font, card_suit_font, facedown=False, 
         )
     else:
         rank, suit = card_data
-        pygame.draw.rect(surf, CREAM_WHITE, (0, 0, width, height), 0, 5)
-        pygame.draw.rect(surf, CHROME_SHADOW, (0, 0, width, height), 1, 5)
+        pygame.draw.rect(surf, CREAM_WHITE, (0, 0, width, height), 0, 6)
+        pygame.draw.rect(surf, CHROME_SHADOW, (0, 0, width, height), 1, 6)
 
         txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
 
         if abs(flip_scale) > 0.4:
+            # Upscaled card value text
             num_surf = card_num_font.render(rank, True, txt_color)
-            surf.blit(num_surf, (5, 3))
+            surf.blit(num_surf, (6, 4))
 
-            suit_surf = card_suit_font.render(suit, True, txt_color)
-            surf.blit(
-                suit_surf,
-                (
-                    width // 2 - suit_surf.get_width() // 2,
-                    height // 2 - suit_surf.get_height() // 2,
-                ),
-            )
+            # Scaled vector suit in center
+            cx = width // 2
+            cy = height // 2 + 5
+            suit_size = int(28 * abs(flip_scale))
+            if suit_size > 4:
+                draw_vector_suit(surf, suit, cx, cy, suit_size, txt_color)
 
     return surf
 
 
-def draw_card(surface, card_obj, card_num_font, card_suit_font):
+def draw_card(surface, card_obj, card_num_font):
     if card_obj.is_flipping:
         scale = math.cos(card_obj.flip_progress * math.pi)
     else:
         scale = -1.0 if card_obj.facedown else 1.0
 
     c_surf = draw_card_surface(
-        card_obj.card_data, card_num_font, card_suit_font, card_obj.facedown, flip_scale=scale
+        card_obj.card_data, card_num_font, card_obj.facedown, flip_scale=scale
     )
     if c_surf:
-        draw_x = card_obj.x + (75 - c_surf.get_width()) // 2
+        draw_x = card_obj.x + (85 - c_surf.get_width()) // 2
         pygame.draw.rect(
-            surface, CHARCOAL, (card_obj.x + 2, card_obj.y + 2, 75, 110), 0, 5
+            surface, CHARCOAL, (card_obj.x + 2, card_obj.y + 2, 85, 120), 0, 6
         )
         surface.blit(c_surf, (draw_x, card_obj.y))
 
@@ -281,15 +312,14 @@ async def run_blackjack(balance):
 
     clock = pygame.time.Clock()
 
-    font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
-    ui_font = pygame.font.SysFont(font_options, 16, bold=True)
-    label_font = pygame.font.SysFont(font_options, 12, bold=True)
-    stencil_large = pygame.font.SysFont("georgia", 20, bold=True)
-    stencil_small = pygame.font.SysFont("georgia", 13, bold=True)
-    card_num_font = pygame.font.SysFont("georgia", 22, bold=True)
-    card_suit_font = pygame.font.SysFont(font_options, 32)
-    chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
-    _lobby_hint_font = pygame.font.SysFont("arial", 14)
+    # --- UPSCALED FONT PALETTE ---
+    ui_font = pygame.font.SysFont("arial", 22, bold=True)
+    label_font = pygame.font.SysFont("arial", 16, bold=True)
+    stencil_large = pygame.font.SysFont("georgia", 24, bold=True)
+    stencil_small = pygame.font.SysFont("georgia", 16, bold=True)
+    card_num_font = pygame.font.SysFont("arial", 26, bold=True)
+    chip_num_font = pygame.font.SysFont("arial", 12, bold=True)
+    _lobby_hint_font = pygame.font.SysFont("arial", 15, bold=True)
 
     if snd_card_slide is None:
         try:
@@ -328,12 +358,13 @@ async def run_blackjack(balance):
 
     deal_box_rect = betting_spots[2]
 
-    hit_btn_rect = pygame.Rect(325, 555, 90, 42)
-    stand_btn_rect = pygame.Rect(430, 555, 90, 42)
-    double_btn_rect = pygame.Rect(535, 555, 90, 42)
+    # Adjusted button bounding boxes for better text fitting
+    hit_btn_rect = pygame.Rect(290, 555, 105, 45)
+    stand_btn_rect = pygame.Rect(415, 555, 105, 45)
+    double_btn_rect = pygame.Rect(540, 555, 105, 45)
 
-    deal_trigger_rect = pygame.Rect(325, 555, 145, 42)
-    clear_btn_rect = pygame.Rect(480, 555, 145, 42)
+    deal_trigger_rect = pygame.Rect(300, 555, 155, 45)
+    clear_btn_rect = pygame.Rect(475, 555, 155, 45)
 
     chip_selections = [
         (10, pygame.Rect(645, 560, 32, 32), (240, 240, 240), (40, 40, 40)),
@@ -364,16 +395,16 @@ async def run_blackjack(balance):
                 stripe_color = col_str
 
         cx, cy = rect.centerx, rect.centery
-        pygame.draw.circle(surface, CHARCOAL, (cx, cy + 2), 14)
-        pygame.draw.circle(surface, bg_color, (cx, cy), 14)
+        pygame.draw.circle(surface, CHARCOAL, (cx, cy + 2), 16)
+        pygame.draw.circle(surface, bg_color, (cx, cy), 16)
 
         for angle in [0, 90, 180, 270]:
             rad = math.radians(angle)
-            sx = cx + math.cos(rad) * 11
-            sy = cy + math.sin(rad) * 11
+            sx = cx + math.cos(rad) * 12
+            sy = cy + math.sin(rad) * 12
             pygame.draw.circle(surface, stripe_color, (int(sx), int(sy)), 2)
 
-        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 8)
+        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 9)
         display_str = str(text_val) if text_val < 1000 else f"{text_val // 1000}k"
         c_txt = chip_num_font.render(display_str, True, CHARCOAL)
         surface.blit(
@@ -387,10 +418,10 @@ async def run_blackjack(balance):
         d_rule = stencil_small.render(
             "Dealer must draw to 16 and stand on all 17s", True, GOLD_TEXT
         )
-        surface.blit(d_rule, (WIDTH // 2 - d_rule.get_width() // 2, 237))
+        surface.blit(d_rule, (WIDTH // 2 - d_rule.get_width() // 2, 242))
 
         ins_txt = stencil_small.render("INSURANCE PAYS 2 TO 1", True, GOLD_TEXT)
-        surface.blit(ins_txt, (WIDTH // 2 - ins_txt.get_width() // 2, 257))
+        surface.blit(ins_txt, (WIDTH // 2 - ins_txt.get_width() // 2, 265))
 
         pygame.draw.arc(
             surface,
@@ -453,7 +484,7 @@ async def run_blackjack(balance):
             if len(deck) < 15:
                 deck = create_deck()
             idx = len(dealer_hand)
-            target_x = 390 + (idx * 85)
+            target_x = 380 + (idx * 95)
             dealer_hand.append(AnimatedCard(deck.pop(), target_x, 75))
             dealer_timer = current_time
         else:
@@ -462,23 +493,23 @@ async def run_blackjack(balance):
 
             if d_val > 21:
                 win_message = (
-                    f"🎉 DEALER BUSTS WITH {d_val}! YOU WIN +${current_bet * 2}!"
+                    f"DEALER BUSTS WITH {d_val}! YOU WIN +${current_bet * 2}!"
                 )
                 balance += current_bet * 2
                 snd_win.play()
             elif p_val > d_val:
                 win_message = (
-                    f"🎉 YOU WIN WITH {p_val} OVER {d_val}! +${current_bet * 2}!"
+                    f"YOU WIN WITH {p_val} OVER {d_val}! +${current_bet * 2}!"
                 )
                 balance += current_bet * 2
                 snd_win.play()
             elif p_val < d_val:
                 win_message = (
-                    f"😢 DEALER WINS WITH {d_val} OVER {p_val}! Better luck next hand."
+                    f"DEALER WINS WITH {d_val} OVER {p_val}!"
                 )
                 snd_lose.play()
             else:
-                win_message = f"🤝 PUSH! Hand ties at {p_val}. Bet returned."
+                win_message = f"PUSH! Hand ties at {p_val}. Bet returned."
                 balance += current_bet
                 snd_chip.play()
 
@@ -519,11 +550,11 @@ async def run_blackjack(balance):
                                 deck = create_deck()
 
                             player_hand = [
-                                AnimatedCard(deck.pop(), 390, 320),
-                                AnimatedCard(deck.pop(), 475, 320),
+                                AnimatedCard(deck.pop(), 380, 310),
+                                AnimatedCard(deck.pop(), 475, 310),
                             ]
                             dealer_hand = [
-                                AnimatedCard(deck.pop(), 390, 75),
+                                AnimatedCard(deck.pop(), 380, 75),
                                 AnimatedCard(deck.pop(), 475, 75, facedown=True),
                             ]
 
@@ -533,7 +564,7 @@ async def run_blackjack(balance):
                                 game_stage = "RESOLVED"
                                 bj_payout = int(current_bet * 2.5)
                                 balance += bj_payout
-                                win_message = f"🃏 NATURAL BLACKJACK! Payout: +${bj_payout}!"
+                                win_message = f"NATURAL BLACKJACK! Payout: +${bj_payout}!"
                                 current_bet = 0
                                 dealer_hand[1].trigger_flip()
                                 snd_win.play()
@@ -542,7 +573,7 @@ async def run_blackjack(balance):
                                 win_message = "HIT, STAND, OR DOUBLE?"
                         else:
                             win_message = (
-                                "❌ PLACE A CHIP INSIDE THE CENTER BETTING CIRCLE FIRST!"
+                                "PLACE A CHIP INSIDE THE CENTER BETTING CIRCLE FIRST!"
                             )
 
                 elif game_stage == "PLAYING":
@@ -550,14 +581,14 @@ async def run_blackjack(balance):
                         if len(deck) < 15:
                             deck = create_deck()
                         idx = len(player_hand)
-                        target_x = 390 + (idx * 85)
-                        player_hand.append(AnimatedCard(deck.pop(), target_x, 320))
+                        target_x = 380 + (idx * 95)
+                        player_hand.append(AnimatedCard(deck.pop(), target_x, 310))
 
                         p_val = calculate_hand_value(player_hand)
 
                         if p_val > 21:
                             game_stage = "RESOLVED"
-                            win_message = f"😢 BUSTED WITH {p_val}! Dealer wins table."
+                            win_message = f"BUSTED WITH {p_val}! Dealer wins table."
                             current_bet = 0
                             dealer_hand[1].trigger_flip()
                             snd_lose.play()
@@ -580,15 +611,15 @@ async def run_blackjack(balance):
                             deck = create_deck()
 
                         idx = len(player_hand)
-                        target_x = 390 + (idx * 85)
-                        player_hand.append(AnimatedCard(deck.pop(), target_x, 320))
+                        target_x = 380 + (idx * 95)
+                        player_hand.append(AnimatedCard(deck.pop(), target_x, 310))
 
                         p_val = calculate_hand_value(player_hand)
 
                         if p_val > 21:
                             game_stage = "RESOLVED"
                             win_message = (
-                                f"😢 BUSTED ON DOUBLE WITH {p_val}! Dealer wins table."
+                                f"BUSTED ON DOUBLE WITH {p_val}! Dealer wins table."
                             )
                             current_bet = 0
                             dealer_hand[1].trigger_flip()
@@ -638,10 +669,10 @@ async def run_blackjack(balance):
         )
 
         d_lbl = label_font.render("DEALER", True, VINTAGE_GOLD)
-        screen.blit(d_lbl, (320, 75))
+        screen.blit(d_lbl, (300, 75))
 
         for card in dealer_hand:
-            draw_card(screen, card, card_num_font, card_suit_font)
+            draw_card(screen, card, card_num_font)
 
         if (
             game_stage in ["RESOLVED", "DEALER_TURN"]
@@ -651,19 +682,19 @@ async def run_blackjack(balance):
             d_val_txt = label_font.render(
                 f"Score: {calculate_hand_value(dealer_hand)}", True, CREAM_WHITE
             )
-            screen.blit(d_val_txt, (320, 55))
+            screen.blit(d_val_txt, (300, 50))
 
         p_lbl = label_font.render("PLAYER", True, VINTAGE_GOLD)
-        screen.blit(p_lbl, (320, 300))
+        screen.blit(p_lbl, (300, 310))
 
         for card in player_hand:
-            draw_card(screen, card, card_num_font, card_suit_font)
+            draw_card(screen, card, card_num_font)
 
         if len(player_hand) > 0:
             p_val_txt = label_font.render(
                 f"Score: {calculate_hand_value(player_hand)}", True, CREAM_WHITE
             )
-            screen.blit(p_val_txt, (320, 320))
+            screen.blit(p_val_txt, (300, 285))
 
         if game_stage == "BETTING":
             if current_bet == 0:
@@ -678,17 +709,17 @@ async def run_blackjack(balance):
             else:
                 draw_chip_stack(screen, deal_box_rect, current_bet)
 
-        bank_rect = pygame.Rect(45, 545, 250, 62)
+        bank_rect = pygame.Rect(35, 545, 245, 62)
         draw_wood_panel(screen, bank_rect)
 
         bal_txt = ui_font.render(f"BANKROLL: ${balance}", True, CREAM_WHITE)
         chip_txt = label_font.render(
-            f"ACTIVE CHIP WAGER: ${active_chip_wager}", True, VINTAGE_GOLD
+            f"ACTIVE CHIP: ${active_chip_wager}", True, VINTAGE_GOLD
         )
-        screen.blit(bal_txt, (60, 557))
-        screen.blit(chip_txt, (60, 582))
+        screen.blit(bal_txt, (45, 553))
+        screen.blit(chip_txt, (45, 580))
 
-        chip_panel_rect = pygame.Rect(630, 545, 220, 62)
+        chip_panel_rect = pygame.Rect(660, 545, 230, 62)
         draw_wood_panel(screen, chip_panel_rect)
 
         for val, rect, col_bg, col_str in chip_selections:
@@ -795,11 +826,11 @@ async def run_blackjack(balance):
             VINTAGE_GOLD
             if ("WIN" in win_message or "NATURAL" in win_message)
             else BRIGHT_RED
-            if ("❌" in win_message or "BUSTED" in win_message)
+            if ("FIRST" in win_message or "BUSTED" in win_message)
             else CREAM_WHITE
         )
         msg_surf = ui_font.render(win_message, True, msg_color)
-        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 673))
+        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 670))
 
         _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
         screen.blit(_hint_surf, (10, HEIGHT - 22))
@@ -821,7 +852,7 @@ async def main():
     bankroll = 1000
 
     bj_btn_rect = pygame.Rect(40, 140, 200, 150)
-    font = pygame.font.SysFont("arial", 20, bold=True)
+    font = pygame.font.SysFont("arial", 22, bold=True)
 
     while True:
         screen.fill((12, 82, 42))
@@ -830,7 +861,7 @@ async def main():
         pygame.draw.rect(screen, (42, 12, 6), bj_btn_rect, 0, 8)
         pygame.draw.rect(screen, (212, 163, 89), bj_btn_rect, 2, 8)
         lbl = font.render("Blackjack", True, (247, 245, 230))
-        screen.blit(lbl, (bj_btn_rect.centerx - lbl.get_width() // 2, bj_btn_rect.centery))
+        screen.blit(lbl, (bj_btn_rect.centerx - lbl.get_width() // 2, bj_btn_rect.centery - lbl.get_height() // 2))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
