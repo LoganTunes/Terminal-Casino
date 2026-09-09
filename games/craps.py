@@ -49,6 +49,15 @@ def evaluate_craps_wagers(die1, die2, point, active_bets):
                 active_bets["PASS_R"] = 0
                 new_point = 0
                 round_resolved = True
+    else:
+        # No pass-line money riding, but the point still needs to be
+        # established/resolved for the puck and for every other bet type.
+        if point == 0:
+            if total_dice not in (2, 3, 7, 11, 12):
+                new_point = total_dice
+        else:
+            if total_dice == point or total_dice == 7:
+                new_point = 0
 
     # 2. Don't Pass
     dp_amt = active_bets.get("DONT_PASS", 0) + active_bets.get("DONT_PASS_R", 0)
