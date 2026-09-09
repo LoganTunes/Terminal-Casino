@@ -181,11 +181,11 @@ TOKEN_SHINE = (240, 245, 250)
 #                               FONTS
 # ============================================================
 
-# Increased font sizes for readability
-ui_font = pygame.font.SysFont("sans-serif", 22, bold=True)
-label_font = pygame.font.SysFont("sans-serif", 22, bold=True)
-marquee_font = pygame.font.SysFont("sans-serif", 20, bold=True)
-button_font = pygame.font.SysFont("sans-serif", 26, bold=True)
+# Restored original safe working fonts
+ui_font = pygame.font.SysFont("sans-serif", 16)
+label_font = pygame.font.SysFont("sans-serif", 14)
+marquee_font = pygame.font.SysFont("sans-serif", 12)
+button_font = pygame.font.SysFont("sans-serif", 20, bold=True)
 
 
 # ============================================================
@@ -422,19 +422,18 @@ async def run_slots(balance):
         50,
     )
 
-    # Adjust button targets slightly for wider text display
     dec_bet_rect = pygame.Rect(
-        420,
+        380,
         518,
-        45,
-        38,
+        35,
+        32,
     )
 
     inc_bet_rect = pygame.Rect(
-        475,
+        425,
         518,
-        45,
-        38,
+        35,
+        32,
     )
 
     def draw_brushed_chrome_rect(surface, rect):
@@ -627,11 +626,11 @@ async def run_slots(balance):
         draw_custom_bell(screen, 310, 158, scale=0.4)
         draw_custom_cherry(screen, 480, 158, scale=0.4)
 
-        # Re-aligned marquee text directly under icons with reduced gap
+        # ADJUSTED MARQUEE Y-POSITIONS (shifted up closer to the icon rows)
         pay_text1 = marquee_font.render("7: x30 | BAR: x20 | ORANGE: x100 | GRAPE: x60", True, CHARCOAL)
         pay_text2 = marquee_font.render("LEMON: x40 | BELL: x10 | CHERRY: x1/x2/x5", True, CREAM_WHITE)
-        screen.blit(pay_text1, (162, 126))
-        screen.blit(pay_text2, (162, 176))
+        screen.blit(pay_text1, (162, 122))
+        screen.blit(pay_text2, (162, 172))
 
         # Reel Housing
         pygame.draw.rect(screen, CHARCOAL, (146, 236, 508, 138))
@@ -672,7 +671,6 @@ async def run_slots(balance):
         msg_surf = ui_font.render(win_message, True, message_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2 - 50, 415))
 
-        # Larger, bolded readout text
         bal_lbl = label_font.render(f"BANK TOTAL: ${balance}", True, CREAM_WHITE)
         bet_lbl = label_font.render(f"WAGER SELECTION: ${bet_amount}", True, VINTAGE_GOLD)
         screen.blit(bal_lbl, (170, 465))
