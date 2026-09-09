@@ -148,7 +148,7 @@ def create_loss_sound():
 
 
 # ============================================================
-#                        COLOR PALETTE
+#                       COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (12, 82, 42)
@@ -167,43 +167,79 @@ BRIGHT_RED = (190, 25, 25)
 
 
 # ============================================================
-#             FLAT UNFLATTENED OG SUIT GENERATOR
+#         MATHEMATICALLY ACCURATE VECTOR SUIT GENERATOR
 # ============================================================
 
 def create_flat_suit_icon(suit_type, size=32):
-    """Draws crisp, unshaded, classic 2D vector suits with zero ugly shape mashups."""
-    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    """
+    Generates exact Anglo-American card suits using high-resolution 
+    vector math curve sampling for smooth, non-deformed silhouettes.
+    """
+    scale = 4
+    high_res = size * scale
+    surf_high = pygame.Surface((high_res, high_res), pygame.SRCALPHA)
     color = BRIGHT_RED if suit_type in ["♥", "♦"] else CHARCOAL
+    center = high_res / 2
 
     if suit_type == "♦":
-        points = [(size // 2, 2), (size - 2, size // 2), (size // 2, size - 2), (2, size // 2)]
-        pygame.draw.polygon(surf, color, points)
+        pts = [
+            (center, high_res * 0.05),
+            (high_res * 0.88, center),
+            (center, high_res * 0.95),
+            (high_res * 0.12, center),
+        ]
+        pygame.draw.polygon(surf_high, color, pts)
 
     elif suit_type == "♥":
-        r = size // 4
-        pygame.draw.circle(surf, color, (r, r + 2), r)
-        pygame.draw.circle(surf, color, (3 * r, r + 2), r)
-        poly = [(0, r + 4), (size, r + 4), (size // 2, size - 2)]
-        pygame.draw.polygon(surf, color, poly)
+        pts = []
+        steps = 120
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
+            y = -(13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t))
+
+            px = center + (x / 17.5) * (high_res * 0.45)
+            py = (center + 2) + (y / 17.5) * (high_res * 0.42)
+            pts.append((px, py))
+        pygame.draw.polygon(surf_high, color, pts)
 
     elif suit_type == "♠":
-        r = size // 4
-        pygame.draw.circle(surf, color, (r, size // 2), r)
-        pygame.draw.circle(surf, color, (3 * r, size // 2), r)
-        poly = [(0, size // 2 - 2), (size, size // 2 - 2), (size // 2, 2)]
-        pygame.draw.polygon(surf, color, poly)
-        stem = [(size // 2 - 3, size // 2), (size // 2 + 3, size // 2), (size // 2 + 5, size - 2), (size // 2 - 5, size - 2)]
-        pygame.draw.polygon(surf, color, stem)
+        pts = []
+        steps = 120
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
+            y = 13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)
+
+            px = center + (x / 17.5) * (high_res * 0.42)
+            py = (center - high_res * 0.08) + (y / 17.5) * (high_res * 0.40)
+            pts.append((px, py))
+        pygame.draw.polygon(surf_high, color, pts)
+
+        stem = [
+            (center - high_res * 0.06, center),
+            (center + high_res * 0.06, center),
+            (center + high_res * 0.22, high_res * 0.92),
+            (center - high_res * 0.22, high_res * 0.92),
+        ]
+        pygame.draw.polygon(surf_high, color, stem)
 
     elif suit_type == "♣":
-        r = int(size * 0.22)
-        pygame.draw.circle(surf, color, (size // 2, r + 2), r)
-        pygame.draw.circle(surf, color, (r + 2, size // 2 + 2), r)
-        pygame.draw.circle(surf, color, (size - r - 2, size // 2 + 2), r)
-        stem = [(size // 2 - 3, size // 2), (size // 2 + 3, size // 2), (size // 2 + 5, size - 2), (size // 2 - 5, size - 2)]
-        pygame.draw.polygon(surf, color, stem)
+        r = high_res * 0.23
+        pygame.draw.circle(surf_high, color, (int(center), int(high_res * 0.32)), int(r))
+        pygame.draw.circle(surf_high, color, (int(high_res * 0.30), int(high_res * 0.52)), int(r))
+        pygame.draw.circle(surf_high, color, (int(high_res * 0.70), int(high_res * 0.52)), int(r))
+        pygame.draw.circle(surf_high, color, (int(center), int(high_res * 0.48)), int(r * 0.8))
 
-    return surf
+        stem = [
+            (center - high_res * 0.06, center),
+            (center + high_res * 0.06, center),
+            (center + high_res * 0.22, high_res * 0.92),
+            (center - high_res * 0.22, high_res * 0.92),
+        ]
+        pygame.draw.polygon(surf_high, color, stem)
+
+    return pygame.transform.smoothscale(surf_high, (size, size))
 
 
 # Cache flat rendered suits
