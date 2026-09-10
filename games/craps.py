@@ -9,7 +9,7 @@ import math
 #       CLASSIC VEGAS CASINO MATH & GAME LOGIC
 # ============================================================
 
-def evaluate_craps_wagers(die1, die2, point, active_bets):
+def evaluate_craps_wagers(die1, die2, point, active_bets, come_points, come_points_r, dont_come_points, dont_come_points_r):
     total_dice = die1 + die2
     is_hard = (die1 == die2)
     payout = 0
@@ -59,7 +59,63 @@ def evaluate_craps_wagers(die1, die2, point, active_bets):
             if total_dice == point or total_dice == 7:
                 new_point = 0
 
-    # 2. Don't Pass
+    # 2. Come Bets (each is its own "mini pass line" that starts on the roll it's placed)
+    for come_key, points_dict in (("COME", come_points), ("COME_R", come_points_r)):
+        fresh_amt = active_bets.get(come_key, 0)
+        if fresh_amt > 0:
+            if total_dice in (7, 11):
+                payout += fresh_amt * 2
+                messages.append(f"Come Win! (+${fresh_amt * 2})")
+                active_bets[come_key] = 0
+            elif total_dice in (2, 3, 12):
+                messages.append(f"Come Craps Out! (-${fresh_amt})")
+                active_bets[come_key] = 0
+            else:
+                points_dict[total_dice] = points_dict.get(total_dice, 0) + fresh_amt
+                messages.append(f"Come bet moves to {total_dice}.")
+                active_bets[come_key] = 0
+
+        # Resolve come bets that already moved to a number in a prior roll
+        if total_dice == 7:
+            for num, amt in points_dict.items():
+                messages.append(f"Come {num} Seven-Out! (-${amt})")
+            points_dict.clear()
+        elif total_dice in points_dict:
+            amt = points_dict.pop(total_dice)
+            payout += amt * 2
+            messages.append(f"Come {total_dice} Hit! (+${amt * 2})")
+
+    # 3. Don't Come Bets (mirror of Come, using Don't Pass style win/lose rules)
+    for dc_key, dc_points_dict in (("DONT_COME", dont_come_points), ("DONT_COME_R", dont_come_points_r)):
+        fresh_dc_amt = active_bets.get(dc_key, 0)
+        if fresh_dc_amt > 0:
+            if total_dice in (2, 3):
+                payout += fresh_dc_amt * 2
+                messages.append(f"Don't Come Win! (+${fresh_dc_amt * 2})")
+                active_bets[dc_key] = 0
+            elif total_dice == 12:
+                payout += fresh_dc_amt
+                messages.append("Don't Come Push (Bar 12)!")
+                active_bets[dc_key] = 0
+            elif total_dice in (7, 11):
+                messages.append(f"Don't Come Loss! (-${fresh_dc_amt})")
+                active_bets[dc_key] = 0
+            else:
+                dc_points_dict[total_dice] = dc_points_dict.get(total_dice, 0) + fresh_dc_amt
+                messages.append(f"Don't Come bet moves to {total_dice}.")
+                active_bets[dc_key] = 0
+
+        # Resolve don't come bets that already moved to a number
+        if total_dice == 7:
+            for num, amt in dc_points_dict.items():
+                payout += amt * 2
+                messages.append(f"Don't Come {num} Win on 7! (+${amt * 2})")
+            dc_points_dict.clear()
+        elif total_dice in dc_points_dict:
+            amt = dc_points_dict.pop(total_dice)
+            messages.append(f"Don't Come {total_dice} Loss! (-${amt})")
+
+    # 4. Don't Pass
     dp_amt = active_bets.get("DONT_PASS", 0) + active_bets.get("DONT_PASS_R", 0)
     if dp_amt > 0:
         if point == 0:
@@ -88,7 +144,7 @@ def evaluate_craps_wagers(die1, die2, point, active_bets):
                 active_bets["DONT_PASS"] = 0
                 active_bets["DONT_PASS_R"] = 0
 
-    # 3. Place Bets
+    # 5. Place Bets
     place_odds = {4: (9, 5), 5: (7, 5), 6: (7, 6), 8: (7, 6), 9: (7, 5), 10: (9, 5)}
     for num, (num_pay, num_bet) in place_odds.items():
         p_amt = active_bets.get(f"PLACE_{num}", 0) + active_bets.get(f"PLACE_{num}_R", 0)
@@ -104,7 +160,7 @@ def evaluate_craps_wagers(die1, die2, point, active_bets):
                 active_bets[f"PLACE_{num}"] = 0
                 active_bets[f"PLACE_{num}_R"] = 0
 
-    # 4. Field Bet
+    # 6. Field Bet
     field_amt = active_bets.get("FIELD", 0) + active_bets.get("FIELD_R", 0)
     if field_amt > 0:
         if total_dice in (3, 4, 9, 10, 11):
@@ -121,7 +177,7 @@ def evaluate_craps_wagers(die1, die2, point, active_bets):
         active_bets["FIELD"] = 0
         active_bets["FIELD_R"] = 0
 
-    # 5. Big 6 & Big 8
+    # 7. Big 6 & Big 8
     for b_num in [6, 8]:
         b_amt = active_bets.get(f"BIG_{b_num}", 0) + active_bets.get(f"BIG_{b_num}_R", 0)
         if b_amt > 0:
@@ -135,7 +191,7 @@ def evaluate_craps_wagers(die1, die2, point, active_bets):
                 active_bets[f"BIG_{b_num}"] = 0
                 active_bets[f"BIG_{b_num}_R"] = 0
 
-    # 6. Center Proposition Bets
+    # 8. Center Proposition Bets
     prop_specs = {
         "SEVEN": ([7], 5),
         "HARD_8": ([8], 10, True),
@@ -246,13 +302,17 @@ async def run_craps(balance):
     running = True
     active_chip_wager = 10
     current_point = 0
+    come_points = {}
+    come_points_r = {}
+    dont_come_points = {}
+    dont_come_points_r = {}
     win_message = "PLACE YOUR BETS AND CLICK SHOOT DICE"
 
     ALL_BET_KEYS = [
-        "PASS", "DONT_PASS", "COME", "FIELD",
+        "PASS", "DONT_PASS", "COME", "DONT_COME", "FIELD",
         "PLACE_4", "PLACE_5", "PLACE_6", "PLACE_8", "PLACE_9", "PLACE_10",
         "BIG_6", "BIG_8",
-        "PASS_R", "DONT_PASS_R", "COME_R", "FIELD_R",
+        "PASS_R", "DONT_PASS_R", "COME_R", "DONT_COME_R", "FIELD_R",
         "PLACE_4_R", "PLACE_5_R", "PLACE_6_R", "PLACE_8_R", "PLACE_9_R", "PLACE_10_R",
         "BIG_6_R", "BIG_8_R",
         "SEVEN", "HARD_8", "HARD_6", "HARD_4", "HARD_10", "CRAPS"
@@ -290,6 +350,7 @@ async def run_craps(balance):
         "PLACE_4":  (pygame.Rect(p_start_x_l + place_w_l*5, p_start_y_l, place_w_l, place_h_l), "4"),
 
         "COME":      (pygame.Rect(175, 238, 288, 80), "C O M E"),
+        "DONT_COME": (pygame.Rect(125, 163, 50, 200), "Don't come bar"),
         "FIELD":     (pygame.Rect(175, 318, 288, 90), "FIELD"),
         "DONT_PASS": (pygame.Rect(175, 408, 288, 45), "Don't pass bar"),
 
@@ -313,6 +374,7 @@ async def run_craps(balance):
         "PLACE_10_R": (pygame.Rect(737 + place_w_l*5, p_start_y_l, place_w_l, place_h_l), "10"),
 
         "COME_R":      (pygame.Rect(737, 238, 288, 80), "C O M E"),
+        "DONT_COME_R": (pygame.Rect(1025, 163, 50, 200), "Don't come bar"),
         "FIELD_R":     (pygame.Rect(737, 318, 288, 90), "FIELD"),
         "DONT_PASS_R": (pygame.Rect(737, 408, 288, 45), "Don't pass bar"),
 
@@ -417,8 +479,13 @@ async def run_craps(balance):
                             snd_chip.play()
 
                     if clear_btn_rect.collidepoint(mouse_pos):
-                        balance += sum(player_bets.values())
+                        balance += (sum(player_bets.values()) + sum(come_points.values()) + sum(come_points_r.values())
+                                    + sum(dont_come_points.values()) + sum(dont_come_points_r.values()))
                         player_bets = {k: 0 for k in ALL_BET_KEYS}
+                        come_points.clear()
+                        come_points_r.clear()
+                        dont_come_points.clear()
+                        dont_come_points_r.clear()
                         snd_chip.play()
 
                     # Left Pass Line Region
@@ -539,7 +606,7 @@ async def run_craps(balance):
                     d[2] = 0; d[3] = 0; d[4] = 0; d[5] = 0; d[7] = 0; d[8] = 0
 
                 v1, v2 = dice_state[0][6], dice_state[1][6]
-                total_won, current_point, outcome_text, round_resolved = evaluate_craps_wagers(v1, v2, current_point, player_bets)
+                total_won, current_point, outcome_text, round_resolved = evaluate_craps_wagers(v1, v2, current_point, player_bets, come_points, come_points_r, dont_come_points, dont_come_points_r)
                 balance += total_won
 
                 if total_won > 0:
@@ -578,6 +645,9 @@ async def run_craps(balance):
 
         # Place, Come, Field, Don't Pass, Big 6/8 Rendering
         for key, (rect, label) in bet_zones.items():
+            if key in ("DONT_COME", "DONT_COME_R"):
+                continue  # border + rotated label already drawn in the side-grid section above
+
             if "PLACE" in key:
                 pygame.draw.rect(screen, CREAM_WHITE, rect, 2)
                 lbl_surf = big_num_font.render(label, True, CREAM_WHITE) if label.isdigit() else felt_font.render(label, True, CREAM_WHITE)
@@ -652,6 +722,34 @@ async def run_craps(balance):
             draw_chip_stack(screen, pygame.Rect(75, 453, 388, 45), player_bets["PASS"])
         if player_bets["PASS_R"] > 0:
             draw_chip_stack(screen, pygame.Rect(737, 453, 388, 45), player_bets["PASS_R"])
+
+        # Come bet markers (chips that traveled from the COME box to a point number)
+        for num, amt in come_points.items():
+            rect = bet_zones[f"PLACE_{num}"][0]
+            come_rect = pygame.Rect(rect.x, rect.bottom - 24, rect.width, 24)
+            draw_chip_stack(screen, come_rect, amt)
+            c_lbl = label_font.render("C", True, BRIGHT_YELLOW)
+            screen.blit(c_lbl, (come_rect.x + 2, come_rect.centery - c_lbl.get_height() // 2))
+        for num, amt in come_points_r.items():
+            rect = bet_zones[f"PLACE_{num}_R"][0]
+            come_rect = pygame.Rect(rect.x, rect.bottom - 24, rect.width, 24)
+            draw_chip_stack(screen, come_rect, amt)
+            c_lbl = label_font.render("C", True, BRIGHT_YELLOW)
+            screen.blit(c_lbl, (come_rect.x + 2, come_rect.centery - c_lbl.get_height() // 2))
+
+        # Don't Come point markers (chips that traveled from the DONT_COME box to a number)
+        for num, amt in dont_come_points.items():
+            rect = bet_zones[f"PLACE_{num}"][0]
+            dc_pt_rect = pygame.Rect(rect.x, rect.y, rect.width, 24)
+            draw_chip_stack(screen, dc_pt_rect, amt)
+            d_lbl = label_font.render("D", True, BRIGHT_RED)
+            screen.blit(d_lbl, (dc_pt_rect.x + 2, dc_pt_rect.centery - d_lbl.get_height() // 2))
+        for num, amt in dont_come_points_r.items():
+            rect = bet_zones[f"PLACE_{num}_R"][0]
+            dc_pt_rect = pygame.Rect(rect.x, rect.y, rect.width, 24)
+            draw_chip_stack(screen, dc_pt_rect, amt)
+            d_lbl = label_font.render("D", True, BRIGHT_RED)
+            screen.blit(d_lbl, (dc_pt_rect.x + 2, dc_pt_rect.centery - d_lbl.get_height() // 2))
 
         # ON/OFF Puck
         puck_radius = 18
