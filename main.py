@@ -5,20 +5,9 @@ Global Resolution Target: 950x720 (Native to all games)
 """
 
 import asyncio
+import importlib
 import sys
 import pygame
-
-# Import game modules from games package
-from games import (
-    blackjack,
-    craps,
-    keno,
-    mechanical_derby,
-    roulette,
-    slots,
-    ultimate_hold_em,
-    video_poker,
-)
 
 # Constants
 WIDTH, HEIGHT = 950, 720
@@ -67,10 +56,42 @@ class MenuButton:
         return None
 
 
+async def launch_game_lazily(game_key, current_balance):
+    """
+    Dynamically imports games only when selected.
+    Prevents broken game imports from crashing the launcher on startup.
+    """
+    module_mapping = {
+        "blackjack": ("games.blackjack", "run_blackjack"),
+        "craps": ("games.craps", "run_craps"),
+        "keno": ("games.keno", "run_keno"),
+        "mechanical_derby": ("games.mechanical_derby", "run_derby"),
+        "roulette": ("games.roulette", "run_roulette"),
+        "slots": ("games.slots", "run_slots"),
+        "ultimate_hold_em": ("games.ultimate_hold_em", "run_ultimate_hold_em"),
+        "video_poker": ("games.video_poker", "run_video_poker"),
+    }
+
+    if game_key not in module_mapping:
+        return current_balance
+
+    mod_path, func_name = module_mapping[game_key]
+    
+    try:
+        # Dynamically load the target game module on demand
+        mod = importlib.import_module(mod_path)
+        game_func = getattr(mod, func_name)
+        new_balance = await game_func(current_balance)
+        return new_balance
+    except Exception as e:
+        print(f"[Launcher Error] Failed to load module {mod_path}: {e}")
+        return current_balance
+
+
 async def main():
     pygame.init()
 
-    # Deferred safe mixer init
+    # Deferred safe mixer init for WebAssembly audio safety
     try:
         if not pygame.mixer.get_init():
             pygame.mixer.init(frequency=22050, size=-16, channels=1)
@@ -82,12 +103,12 @@ async def main():
     pygame.display.set_caption("The Terminal Casino - Main Lobby")
     clock = pygame.time.Clock()
 
-    # Immediate forced canvas binding for WebAssembly/Pybag
+    # Immediate forced canvas rendering for Pybag WebAssembly binding
     screen.fill(MAHOGANY)
     pygame.display.flip()
     await asyncio.sleep(0)
 
-    # Use Pygame's built-in WebAssembly-safe font (None)
+    # WebAssembly-safe default embedded font (None)
     title_font = pygame.font.Font(None, 44)
     subtitle_font = pygame.font.Font(None, 24)
     card_font = pygame.font.Font(None, 20)
@@ -95,19 +116,7 @@ async def main():
 
     player_balance = 1000
 
-    # Game Launcher Registry
-    game_launchers = {
-        "blackjack": blackjack.run_blackjack,
-        "craps": craps.run_craps,
-        "keno": keno.run_keno,
-        "mechanical_derby": mechanical_derby.run_derby,
-        "roulette": roulette.run_roulette,
-        "slots": slots.run_slots,
-        "ultimate_hold_em": ultimate_hold_em.run_ultimate_hold_em,
-        "video_poker": video_poker.run_video_poker,
-    }
-
-    # Layout Grid Settings
+    # Layout Grid Settings (2x4 Grid)
     start_x, start_y = 75, 220
     card_w, card_h = 180, 100
     gap_x, gap_y = 25, 25
@@ -140,11 +149,11 @@ async def main():
                 if launched_game:
                     next_game = launched_game
 
-        # Safe launch outside event loop
-        if next_game and next_game in game_launchers:
-            player_balance = await game_launchers[next_game](player_balance)
+        # Safe lazy launch outside the input loop
+        if next_game:
+            player_balance = await launch_game_lazily(next_game, player_balance)
             
-            # Re-bind screen and clear pending inputs upon return
+            # Reset display canvas and clear inputs upon returning to lobby
             screen = pygame.display.set_mode((WIDTH, HEIGHT))
             pygame.display.set_caption("The Terminal Casino - Main Lobby")
             pygame.event.clear()
