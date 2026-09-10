@@ -510,7 +510,9 @@ async def run_craps(balance):
                     else:
                         for key, (rect, label) in bet_zones.items():
                             if rect.collidepoint(mouse_pos):
-                                if balance >= active_chip_wager:
+                                if key in ("COME", "COME_R", "DONT_COME", "DONT_COME_R") and current_point == 0:
+                                    win_message = "❌ Come/Don't Come only allowed once the point is ON!"
+                                elif balance >= active_chip_wager:
                                     player_bets[key] += active_chip_wager
                                     balance -= active_chip_wager
                                     snd_chip.play()
