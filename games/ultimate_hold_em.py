@@ -148,73 +148,67 @@ def draw_heart(surface, color, x, y, size):
         dx = 16 * (math.sin(t) ** 3)
         dy = -(13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t))
         px = x + int(dx * scale / 16)
-        py = y + int((dy - 1.5) * scale / 16)
+        py = y + int((dy - 1.0) * scale / 16)
         points.append((px, py))
     pygame.draw.polygon(surface, color, points)
 
 def draw_spade(surface, color, x, y, size):
-    points = []
+    # Spade Head (Inverted Heart)
+    head_points = []
     steps = 80
-    scale = size * 0.41
+    scale = size * 0.42
     for i in range(steps + 1):
         t = math.pi * 2 * i / steps
         dx = 16 * (math.sin(t) ** 3)
         dy = (13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t))
         px = x + int(dx * scale / 16)
-        py = y + int((dy - 2.5) * scale / 16)
-        points.append((px, py))
-    pygame.draw.polygon(surface, color, points)
+        py = y + int((dy - 3.0) * scale / 16)
+        head_points.append((px, py))
+    pygame.draw.polygon(surface, color, head_points)
     
-    stem_points = []
-    stem_height = int(size * 0.35)
-    stem_top_y = y + int(size * 0.05)
+    # Flared Pedestal Stem
+    stem_w_top = max(1, int(size * 0.04))
+    stem_w_bottom = max(2, int(size * 0.28))
+    top_y = y + int(size * 0.05)
+    bottom_y = y + int(size * 0.48)
     
-    for i in range(11):
-        pct = i / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x - int((size * 0.03) + (size * 0.15) * (pct ** 2.5))
-        stem_points.append((curr_x, curr_y))
-        
-    for i in range(11):
-        pct = (10 - i) / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x + int((size * 0.03) + (size * 0.15) * (pct ** 2.5))
-        stem_points.append((curr_x, curr_y))
-        
+    stem_points = [
+        (x - stem_w_top, top_y),
+        (x + stem_w_top, top_y),
+        (x + stem_w_bottom, bottom_y),
+        (x - stem_w_bottom, bottom_y)
+    ]
     pygame.draw.polygon(surface, color, stem_points)
 
 def draw_club(surface, color, x, y, size):
-    r = int(size * 0.23)
-    dist = int(size * 0.21)
+    r = int(size * 0.22)
+    dist = int(size * 0.18)
     
+    # Center connecting core
     pygame.draw.circle(surface, color, (x, y - dist), r)
-    pygame.draw.circle(surface, color, (x - dist, y + int(size * 0.06)), r)
-    pygame.draw.circle(surface, color, (x + dist, y + int(size * 0.06)), r)
+    pygame.draw.circle(surface, color, (x - dist, y + int(size * 0.05)), r)
+    pygame.draw.circle(surface, color, (x + dist, y + int(size * 0.05)), r)
     
     center_poly = [
         (x, y - dist),
-        (x + dist, y + int(size * 0.06)),
-        (x, y + int(size * 0.15)),
-        (x - dist, y + int(size * 0.06))
+        (x + dist, y + int(size * 0.05)),
+        (x, y + int(size * 0.12)),
+        (x - dist, y + int(size * 0.05))
     ]
     pygame.draw.polygon(surface, color, center_poly)
     
-    stem_points = []
-    stem_height = int(size * 0.32)
-    stem_top_y = y + int(size * 0.08)
+    # Flared Pedestal Stem
+    stem_w_top = max(1, int(size * 0.04))
+    stem_w_bottom = max(2, int(size * 0.26))
+    top_y = y + int(size * 0.02)
+    bottom_y = y + int(size * 0.46)
     
-    for i in range(11):
-        pct = i / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x - int((size * 0.02) + (size * 0.14) * (pct ** 2.5))
-        stem_points.append((curr_x, curr_y))
-        
-    for i in range(11):
-        pct = (10 - i) / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x + int((size * 0.02) + (size * 0.14) * (pct ** 2.5))
-        stem_points.append((curr_x, curr_y))
-        
+    stem_points = [
+        (x - stem_w_top, top_y),
+        (x + stem_w_top, top_y),
+        (x + stem_w_bottom, bottom_y),
+        (x - stem_w_bottom, bottom_y)
+    ]
     pygame.draw.polygon(surface, color, stem_points)
 
 def draw_vector_suit(surface, suit_str, x, y, size, color):
@@ -756,46 +750,49 @@ async def run_ultimate_hold_em(balance):
 
             pygame.draw.rect(screen, (FELT_GREEN if bet_trips == 0 else GOLD_SHADOW), trips_felt_rect, 0, 4)
             pygame.draw.rect(screen, CREAM_WHITE, trips_felt_rect, 2, 4)
-            screen.blit(label_font.render("TRIPS SIDEBET", True, (CREAM_WHITE if bet_trips == 0 else CHARCOAL)), (trips_felt_rect.x + 6, trips_felt_rect.y + 15))
-            screen.blit(label_font.render("(BONUS)", True, (VINTAGE_GOLD if bet_trips == 0 else CHARCOAL)), (trips_felt_rect.x + 30, trips_felt_rect.y + 45))
+            screen.blit(label_font.render("TRIPS BET", True, (CREAM_WHITE if bet_trips == 0 else CHARCOAL)), (trips_felt_rect.x + 18, trips_felt_rect.y + 15))
+            screen.blit(label_font.render("(OPTIONAL)", True, (VINTAGE_GOLD if bet_trips == 0 else CHARCOAL)), (trips_felt_rect.x + 18, trips_felt_rect.y + 45))
             if bet_trips > 0:
                 draw_chip_stack(screen, trips_felt_rect, bet_trips)
 
-        pygame.draw.rect(screen, CHARCOAL, (720, 380, 180, 110))
-        pygame.draw.rect(screen, CHROME_SHADOW, (720, 380, 180, 110), 2)
-        screen.blit(label_font.render(f"ANTE: ${bet_ante}", True, CREAM_WHITE), (735, 395))
-        screen.blit(label_font.render(f"BLIND: ${bet_blind}", True, CREAM_WHITE), (735, 425))
-        screen.blit(label_font.render(f"PLAY: ${bet_play}", True, VINTAGE_GOLD), (735, 455))
+        # Draw Table Bets HUD
+        screen.blit(ui_font.render(f"ANTE: ${bet_ante}", True, CREAM_WHITE), (440, 200))
+        screen.blit(ui_font.render(f"BLIND: ${bet_blind}", True, CREAM_WHITE), (440, 230))
+        screen.blit(ui_font.render(f"TRIPS: ${bet_trips}", True, CREAM_WHITE), (570, 200))
+        screen.blit(ui_font.render(f"PLAY: ${bet_play}", True, CREAM_WHITE), (570, 230))
 
-        pygame.draw.rect(screen, CHARCOAL, (45, 480, 330, 100))
-        pygame.draw.rect(screen, CHROME_SHADOW, (45, 480, 330, 100), 2)
-        screen.blit(ui_font.render(f"YOUR BANKROLL: ${balance}", True, CREAM_WHITE), (65, 500))
-        screen.blit(label_font.render(f"ACTIVE CHIP SELECTION: ${active_chip_wager}", True, VINTAGE_GOLD), (65, 540))
-
-        for val, rect, col_bg, col_str in chip_selections:
-            is_sel_chip = (active_chip_wager == val)
-            pygame.draw.circle(screen, (VINTAGE_GOLD if is_sel_chip else CHARCOAL), rect.center, 24)
-            pygame.draw.circle(screen, col_bg, rect.center, 21)
+        # Chip Tray Selection HUD
+        screen.blit(ui_font.render("CHIP TRAY", True, VINTAGE_GOLD), (55, 560))
+        for val, rect, bg_col, str_col in chip_selections:
+            is_sel = (val == active_chip_wager)
+            cy = rect.centery - (4 if is_sel else 0)
+            pygame.draw.circle(screen, CHARCOAL, (rect.centerx, cy + 2), 22)
+            pygame.draw.circle(screen, bg_col, (rect.centerx, cy), 22)
             for angle in [0, 90, 180, 270]:
-                pygame.draw.circle(screen, col_str, (int(rect.centerx + math.cos(math.radians(angle)) * 16), int(rect.centery + math.sin(math.radians(angle)) * 16)), 3)
-            pygame.draw.circle(screen, CREAM_WHITE, rect.center, 14)
+                rad = math.radians(angle)
+                pygame.draw.circle(screen, str_col, (int(rect.centerx + math.cos(rad) * 17), int(cy + math.sin(rad) * 17)), 3)
+            pygame.draw.circle(screen, CREAM_WHITE, (rect.centerx, cy), 13)
             display_str = str(val) if val < 1000 else f"{val // 1000}k"
-            screen.blit(chip_num_font.render(f"${display_str}", True, CHARCOAL), (rect.centerx - 11, rect.centery - 6))
+            c_txt = chip_num_font.render(display_str, True, CHARCOAL)
+            screen.blit(c_txt, (rect.centerx - (c_txt.get_width() // 2), cy - (c_txt.get_height() // 2)))
+            if is_sel:
+                pygame.draw.circle(screen, VINTAGE_GOLD, (rect.centerx, cy), 23, 2)
 
-        btn_1_widget.draw(screen, label_font)
-        btn_2_widget.draw(screen, label_font)
-        clear_widget.draw(screen, label_font)
-        action_widget.draw(screen, label_font)
+        # Dashboard / Balance / Win Message
+        balance_txt = ui_font.render(f"BANKROLL: ${balance}", True, VINTAGE_GOLD)
+        screen.blit(balance_txt, (55, 20))
 
-        pygame.draw.rect(screen, CHARCOAL, (45, 660, 855, 45))
-        pygame.draw.rect(screen, VINTAGE_GOLD, (45, 660, 855, 45), 2)
-        msg_color = VINTAGE_GOLD if ("WIN" in win_message or "🎉" in win_message) else (BRIGHT_RED if ("❌" in win_message or "Folded" in win_message) else CREAM_WHITE)
-        msg_surf = ui_font.render(win_message, True, msg_color)
-        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 674))
+        msg_txt = ui_font.render(win_message, True, CREAM_WHITE)
+        screen.blit(msg_txt, (WIDTH // 2 - msg_txt.get_width() // 2, 680))
 
-        _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
-        screen.blit(_hint_surf, (10, HEIGHT - 22))
+        # Render Active UI Widgets
+        action_widget.draw(screen, ui_font)
+        clear_widget.draw(screen, ui_font)
+        btn_1_widget.draw(screen, ui_font)
+        btn_2_widget.draw(screen, ui_font)
+
         pygame.display.flip()
-        await asyncio.sleep(0)
         clock.tick(60)
+        await asyncio.sleep(0)
+
     return balance
