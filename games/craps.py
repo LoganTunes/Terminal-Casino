@@ -61,6 +61,19 @@ def evaluate_craps_wagers(die1, die2, point, active_bets, come_points, come_poin
 
     # 2. Come Bets (each is its own "mini pass line" that starts on the roll it's placed)
     for come_key, points_dict in (("COME", come_points), ("COME_R", come_points_r)):
+        # Resolve come bets already sitting on a number from an EARLIER roll first,
+        # before any bet freshly placed this roll gets a chance to be added.
+        if total_dice == 7:
+            for num, amt in points_dict.items():
+                messages.append(f"Come {num} Seven-Out! (-${amt})")
+            points_dict.clear()
+        elif total_dice in points_dict:
+            amt = points_dict.pop(total_dice)
+            payout += amt * 2
+            messages.append(f"Come {total_dice} Hit! (+${amt * 2})")
+
+        # Now evaluate any money freshly sitting in the COME box this roll.
+        # It can only start traveling to a number now; it resolves on a later roll.
         fresh_amt = active_bets.get(come_key, 0)
         if fresh_amt > 0:
             if total_dice in (7, 11):
@@ -75,18 +88,21 @@ def evaluate_craps_wagers(die1, die2, point, active_bets, come_points, come_poin
                 messages.append(f"Come bet moves to {total_dice}.")
                 active_bets[come_key] = 0
 
-        # Resolve come bets that already moved to a number in a prior roll
-        if total_dice == 7:
-            for num, amt in points_dict.items():
-                messages.append(f"Come {num} Seven-Out! (-${amt})")
-            points_dict.clear()
-        elif total_dice in points_dict:
-            amt = points_dict.pop(total_dice)
-            payout += amt * 2
-            messages.append(f"Come {total_dice} Hit! (+${amt * 2})")
-
     # 3. Don't Come Bets (mirror of Come, using Don't Pass style win/lose rules)
     for dc_key, dc_points_dict in (("DONT_COME", dont_come_points), ("DONT_COME_R", dont_come_points_r)):
+        # Resolve don't come bets already sitting on a number from an EARLIER roll first,
+        # before any bet freshly placed this roll gets a chance to be added.
+        if total_dice == 7:
+            for num, amt in dc_points_dict.items():
+                payout += amt * 2
+                messages.append(f"Don't Come {num} Win on 7! (+${amt * 2})")
+            dc_points_dict.clear()
+        elif total_dice in dc_points_dict:
+            amt = dc_points_dict.pop(total_dice)
+            messages.append(f"Don't Come {total_dice} Loss! (-${amt})")
+
+        # Now evaluate any money freshly sitting in the DONT_COME box this roll.
+        # It can only start traveling to a number now; it resolves on a later roll.
         fresh_dc_amt = active_bets.get(dc_key, 0)
         if fresh_dc_amt > 0:
             if total_dice in (2, 3):
@@ -104,16 +120,6 @@ def evaluate_craps_wagers(die1, die2, point, active_bets, come_points, come_poin
                 dc_points_dict[total_dice] = dc_points_dict.get(total_dice, 0) + fresh_dc_amt
                 messages.append(f"Don't Come bet moves to {total_dice}.")
                 active_bets[dc_key] = 0
-
-        # Resolve don't come bets that already moved to a number
-        if total_dice == 7:
-            for num, amt in dc_points_dict.items():
-                payout += amt * 2
-                messages.append(f"Don't Come {num} Win on 7! (+${amt * 2})")
-            dc_points_dict.clear()
-        elif total_dice in dc_points_dict:
-            amt = dc_points_dict.pop(total_dice)
-            messages.append(f"Don't Come {total_dice} Loss! (-${amt})")
 
     # 4. Don't Pass
     dp_amt = active_bets.get("DONT_PASS", 0) + active_bets.get("DONT_PASS_R", 0)
