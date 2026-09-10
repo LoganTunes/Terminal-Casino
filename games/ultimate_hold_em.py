@@ -1,19 +1,24 @@
+"""
+THE TERMINAL CASINO - Ultimate Texas Hold 'Em
+=============================================
+Scaled to 1280x720 to match lobby context.
+"""
+
+import array
 import asyncio
-import pygame
+import itertools
+import math
 import random
 import sys
-import array
-import math
-import itertools
+
+import pygame
 
 # ============================================================
-#        ORIGINAL CASINO MATH ENGINE & GAME LOGIC
+# CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
-
 SUITS = ["♥", "♦", "♣", "♠"]
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
 RANK_VALUES = {rank: i for i, rank in enumerate(RANKS)}
-
 HAND_RANKS = [
     "ROYAL FLUSH",
     "STRAIGHT FLUSH",
@@ -46,6 +51,7 @@ BLIND_PAYTABLE = {
     "STRAIGHT": 1,
 }
 
+
 def create_deck():
     deck = []
     for suit in SUITS:
@@ -54,18 +60,21 @@ def create_deck():
     random.shuffle(deck)
     return deck
 
+
 def evaluate_five_card_hand(cards):
     ranks = [rank for rank, _ in cards]
     suits = [suit for _, suit in cards]
     values = sorted([RANK_VALUES[rank] for rank in ranks], reverse=True)
-    
+
     rank_value_counts = {}
     for val in values:
         rank_value_counts[val] = rank_value_counts.get(val, 0) + 1
-        
-    sorted_counts_groups = sorted(rank_value_counts.items(), key=lambda x: (x[1], x[0]), reverse=True)
+
+    sorted_counts_groups = sorted(
+        rank_value_counts.items(), key=lambda x: (x[1], x[0]), reverse=True
+    )
     counts = [item[1] for item in sorted_counts_groups]
-    
+
     is_flush = len(set(suits)) == 1
     unique_values = sorted(set(values))
     is_straight = False
@@ -75,39 +84,68 @@ def evaluate_five_card_hand(cards):
         if unique_values[-1] - unique_values[0] == 4:
             is_straight = True
             straight_high = unique_values[-1]
-        elif unique_values == [RANK_VALUES["2"], RANK_VALUES["3"], RANK_VALUES["4"], RANK_VALUES["5"], RANK_VALUES["A"]]:
+        elif unique_values == [
+            RANK_VALUES["2"],
+            RANK_VALUES["3"],
+            RANK_VALUES["4"],
+            RANK_VALUES["5"],
+            RANK_VALUES["A"],
+        ]:
             is_straight = True
             straight_high = RANK_VALUES["5"]
 
     if is_flush and is_straight and straight_high == RANK_VALUES["A"]:
         return (HAND_RANKS.index("ROYAL FLUSH"), "ROYAL FLUSH", [straight_high])
     if is_flush and is_straight:
-        return (HAND_RANKS.index("STRAIGHT FLUSH"), "STRAIGHT FLUSH", [straight_high])
+        return (
+            HAND_RANKS.index("STRAIGHT FLUSH"),
+            "STRAIGHT FLUSH",
+            [straight_high],
+        )
     if counts == [4, 1]:
         four_value = sorted_counts_groups[0][0]
         kicker = sorted_counts_groups[1][0]
-        return (HAND_RANKS.index("FOUR OF A KIND"), "FOUR OF A KIND", [four_value, kicker])
+        return (
+            HAND_RANKS.index("FOUR OF A KIND"),
+            "FOUR OF A KIND",
+            [four_value, kicker],
+        )
     if counts == [3, 2]:
         three_value = sorted_counts_groups[0][0]
         pair_value = sorted_counts_groups[1][0]
-        return (HAND_RANKS.index("FULL HOUSE"), "FULL HOUSE", [three_value, pair_value])
+        return (
+            HAND_RANKS.index("FULL HOUSE"),
+            "FULL HOUSE",
+            [three_value, pair_value],
+        )
     if is_flush:
         return (HAND_RANKS.index("FLUSH"), "FLUSH", values)
     if is_straight:
         return (HAND_RANKS.index("STRAIGHT"), "STRAIGHT", [straight_high])
     if counts == [3, 1, 1]:
         three_value = sorted_counts_groups[0][0]
-        kickers = sorted([item[0] for item in sorted_counts_groups[1:]], reverse=True)
-        return (HAND_RANKS.index("THREE OF A KIND"), "THREE OF A KIND", [three_value] + kickers)
+        kickers = sorted(
+            [item[0] for item in sorted_counts_groups[1:]], reverse=True
+        )
+        return (
+            HAND_RANKS.index("THREE OF A KIND"),
+            "THREE OF A KIND",
+            [three_value] + kickers,
+        )
     if counts == [2, 2, 1]:
-        pair_values = sorted([item[0] for item in sorted_counts_groups[:2]], reverse=True)
+        pair_values = sorted(
+            [item[0] for item in sorted_counts_groups[:2]], reverse=True
+        )
         kicker = sorted_counts_groups[2][0]
         return (HAND_RANKS.index("TWO PAIR"), "TWO PAIR", pair_values + [kicker])
     if counts == [2, 1, 1, 1]:
         pair_value = sorted_counts_groups[0][0]
-        kickers = sorted([item[0] for item in sorted_counts_groups[1:]], reverse=True)
+        kickers = sorted(
+            [item[0] for item in sorted_counts_groups[1:]], reverse=True
+        )
         return (HAND_RANKS.index("PAIR"), "PAIR", [pair_value] + kickers)
     return (HAND_RANKS.index("HIGH CARD"), "HIGH CARD", values)
+
 
 def evaluate_best_5_card_hand(seven_cards):
     best_rank_idx = len(HAND_RANKS)
@@ -124,52 +162,62 @@ def evaluate_best_5_card_hand(seven_cards):
                 best_tie_breaker = tie_breaker
     return best_rank_idx, best_rank_name, best_tie_breaker
 
-# ============================================================
-#        VECTOR SUIT DRAWING HELPER
-# ============================================================
 
+# ============================================================
+# VECTOR SUIT DRAWING HELPER
+# ============================================================
 def draw_vector_suit(surface, suit_str, center_x, center_y, size, color):
     cx, cy = center_x, center_y
     r = size / 2.0
-
-    if suit_str == "♦":  # Diamond
+    if suit_str == "♦":
         points = [(cx, cy - r), (cx + r * 0.8, cy), (cx, cy + r), (cx - r * 0.8, cy)]
         pygame.draw.polygon(surface, color, points)
-
-    elif suit_str == "♥":  # Heart
+    elif suit_str == "♥":
         points = []
         for t in [i * 0.05 for i in range(126)]:
             angle = t * math.pi
             x = 16 * (math.sin(angle) ** 3)
-            y = -(13 * math.cos(angle) - 5 * math.cos(2 * angle) - 2 * math.cos(3 * angle) - math.cos(4 * angle))
+            y = -(
+                13 * math.cos(angle)
+                - 5 * math.cos(2 * angle)
+                - 2 * math.cos(3 * angle)
+                - math.cos(4 * angle)
+            )
             points.append((cx + (x / 17.0) * r, cy + (y / 17.0) * r))
         pygame.draw.polygon(surface, color, points)
-
-    elif suit_str == "♠":  # Spade
+    elif suit_str == "♠":
         points = []
         for t in [i * 0.05 for i in range(126)]:
             angle = t * math.pi
             x = 16 * (math.sin(angle) ** 3)
-            y = (13 * math.cos(angle) - 5 * math.cos(2 * angle) - 2 * math.cos(3 * angle) - math.cos(4 * angle))
+            y = (
+                13 * math.cos(angle)
+                - 5 * math.cos(2 * angle)
+                - 2 * math.cos(3 * angle)
+                - math.cos(4 * angle)
+            )
             points.append((cx + (x / 17.0) * r, cy + (y / 17.0) * r - r * 0.1))
         pygame.draw.polygon(surface, color, points)
-        # Base stem
         stem_rect = pygame.Rect(cx - r * 0.15, cy, r * 0.3, r * 0.95)
         pygame.draw.rect(surface, color, stem_rect)
-
-    elif suit_str == "♣":  # Club
+    elif suit_str == "♣":
         leaf_r = r * 0.42
-        pygame.draw.circle(surface, color, (int(cx), int(cy - r * 0.35)), int(leaf_r))
-        pygame.draw.circle(surface, color, (int(cx - r * 0.4), int(cy + r * 0.15)), int(leaf_r))
-        pygame.draw.circle(surface, color, (int(cx + r * 0.4), int(cy + r * 0.15)), int(leaf_r))
-        # Base stem
+        pygame.draw.circle(
+            surface, color, (int(cx), int(cy - r * 0.35)), int(leaf_r)
+        )
+        pygame.draw.circle(
+            surface, color, (int(cx - r * 0.4), int(cy + r * 0.15)), int(leaf_r)
+        )
+        pygame.draw.circle(
+            surface, color, (int(cx + r * 0.4), int(cy + r * 0.15)), int(leaf_r)
+        )
         stem_rect = pygame.Rect(cx - r * 0.15, cy, r * 0.3, r * 0.9)
         pygame.draw.rect(surface, color, stem_rect)
 
-# ============================================================
-#        REFACTORED WIDGET ENGINE & STATE DISPATCHER
-# ============================================================
 
+# ============================================================
+# UI WIDGET ENGINE & STATE DISPATCHER
+# ============================================================
 class UIWidget:
     def __init__(self, rect, label, bg_color, text_color, callback=None):
         self.rect = pygame.Rect(rect)
@@ -186,22 +234,40 @@ class UIWidget:
         pygame.draw.rect(surface, (247, 245, 230), self.rect, 1, 5)
         if self.label:
             b_txt = font.render(self.label, True, self.text_color)
-            surface.blit(b_txt, (self.rect.centerx - b_txt.get_width() // 2, self.rect.centery - b_txt.get_height() // 2))
+            surface.blit(
+                b_txt,
+                (
+                    self.rect.centerx - b_txt.get_width() // 2,
+                    self.rect.centery - b_txt.get_height() // 2,
+                ),
+            )
 
     def handle_event(self, event):
-        if self.visible and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+        if (
+            self.visible
+            and event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+        ):
             if self.rect.collidepoint(event.pos):
                 if self.callback:
                     self.callback()
                     return True
         return False
 
-# ============================================================
-#        CARD DEALING & FLIPPING ANIMATION ENGINE
-# ============================================================
 
+# ============================================================
+# CARD DEALING & FLIPPING ANIMATION ENGINE
+# ============================================================
 class CardAnimation:
-    def __init__(self, start_pos, target_rect, card, from_facedown, to_facedown, is_flip_only=False):
+    def __init__(
+        self,
+        start_pos,
+        target_rect,
+        card,
+        from_facedown,
+        to_facedown,
+        is_flip_only=False,
+    ):
         self.start_x, self.start_y = start_pos
         self.target_rect = pygame.Rect(target_rect)
         self.card = card
@@ -209,7 +275,7 @@ class CardAnimation:
         self.to_facedown = to_facedown
         self.is_flip_only = is_flip_only
         self.progress = 0.0
-        self.speed = 0.12  # Smooth animation speed
+        self.speed = 0.12
 
     def update(self):
         self.progress += self.speed
@@ -221,31 +287,50 @@ class CardAnimation:
     def draw(self, surface):
         if self.is_flip_only:
             scale_x = abs(math.cos(self.progress * math.pi))
-            current_facedown = self.from_facedown if self.progress < 0.5 else self.to_facedown
+            current_facedown = (
+                self.from_facedown if self.progress < 0.5 else self.to_facedown
+            )
             w = max(2, int(self.target_rect.width * scale_x))
             h = self.target_rect.height
             cx, cy = self.target_rect.centerx, self.target_rect.centery
             scaled_rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
-            draw_card_scaled(surface, scaled_rect, self.card, facedown=current_facedown)
+            draw_card_scaled(
+                surface, scaled_rect, self.card, facedown=current_facedown
+            )
         else:
-            curr_x = self.start_x + (self.target_rect.x - self.start_x) * self.progress
-            curr_y = self.start_y + (self.target_rect.y - self.start_y) * self.progress
-            sliding_rect = pygame.Rect(int(curr_x), int(curr_y), self.target_rect.width, self.target_rect.height)
-            draw_card_scaled(surface, sliding_rect, self.card, facedown=self.from_facedown)
+            curr_x = (
+                self.start_x + (self.target_rect.x - self.start_x) * self.progress
+            )
+            curr_y = (
+                self.start_y + (self.target_rect.y - self.start_y) * self.progress
+            )
+            sliding_rect = pygame.Rect(
+                int(curr_x),
+                int(curr_y),
+                self.target_rect.width,
+                self.target_rect.height,
+            )
+            draw_card_scaled(
+                surface, sliding_rect, self.card, facedown=self.from_facedown
+            )
+
 
 # ============================================================
-#            PYGAME VISUAL ENGINE INITIALIZATION
+# PYGAME VISUAL ENGINE INITIALIZATION
 # ============================================================
-
 pygame.init()
-pygame.mixer.init(frequency=22050, size=-16, channels=1)
+if not pygame.mixer.get_init():
+    pygame.mixer.init(frequency=22050, size=-16, channels=1)
 
-WIDTH, HEIGHT = 950, 720
+# Scaled canvas constants
+WIDTH, HEIGHT = 1280, 720
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Vintage Vegas Ultimate Texas Hold 'Em - Refactored Engine")
+pygame.display.set_caption("Vintage Vegas Ultimate Texas Hold 'Em")
 clock = pygame.time.Clock()
+
 _lobby_hint_font = pygame.font.SysFont(None, 20)
-_GAME_TITLE = ("Vintage Vegas Ultimate Texas Hold 'Em - Refactored Engine")
+_GAME_TITLE = "Vintage Vegas Ultimate Texas Hold 'Em"
+
 
 def generate_noise_burst(duration_ms, volume=0.2, filter_low=False):
     sample_rate = 22050
@@ -263,6 +348,7 @@ def generate_noise_burst(duration_ms, volume=0.2, filter_low=False):
         buffer[i] = int(val * volume * envelope)
     return pygame.mixer.Sound(buffer=buffer)
 
+
 def generate_harmonic_clink(freqs, duration_ms, volume=0.2):
     sample_rate = 22050
     total_samples = int(sample_rate * (duration_ms / 1000.0))
@@ -276,6 +362,7 @@ def generate_harmonic_clink(freqs, duration_ms, volume=0.2):
         val = int((val / len(freqs)) * 32767 * volume * envelope)
         buffer[i] = val
     return pygame.mixer.Sound(buffer=buffer)
+
 
 snd_slide = generate_noise_burst(70, volume=0.15, filter_low=True)
 snd_deal = generate_noise_burst(40, volume=0.2, filter_low=False)
@@ -294,17 +381,32 @@ CREAM_WHITE = (247, 245, 230)
 CHARCOAL = (24, 24, 24)
 BRIGHT_RED = (190, 25, 25)
 
-ui_font = pygame.font.SysFont("arial", 18, bold=True)  
+ui_font = pygame.font.SysFont("arial", 18, bold=True)
 label_font = pygame.font.SysFont("arial", 14, bold=True)
 card_num_font = pygame.font.SysFont("georgia", 22, bold=True)
 chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
 
+
 def draw_card(surface, rect, card, facedown=False):
-    pygame.draw.rect(surface, CHARCOAL, (rect.x + 3, rect.y + 3, rect.width, rect.height), 0, 6)
+    pygame.draw.rect(
+        surface, CHARCOAL, (rect.x + 3, rect.y + 3, rect.width, rect.height), 0, 6
+    )
     if facedown:
         pygame.draw.rect(surface, WOOD_LIGHT, rect, 0, 6)
-        pygame.draw.rect(surface, VINTAGE_GOLD, (rect.x + 5, rect.y + 5, rect.width - 10, rect.height - 10), 2, 4)
-        pygame.draw.rect(surface, CHARCOAL, (rect.x + 8, rect.y + 8, rect.width - 16, rect.height - 16), 0, 3)
+        pygame.draw.rect(
+            surface,
+            VINTAGE_GOLD,
+            (rect.x + 5, rect.y + 5, rect.width - 10, rect.height - 10),
+            2,
+            4,
+        )
+        pygame.draw.rect(
+            surface,
+            CHARCOAL,
+            (rect.x + 8, rect.y + 8, rect.width - 16, rect.height - 16),
+            0,
+            3,
+        )
     else:
         rank, suit = card
         pygame.draw.rect(surface, CREAM_WHITE, rect, 0, 6)
@@ -312,20 +414,36 @@ def draw_card(surface, rect, card, facedown=False):
         txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
         num_surf = card_num_font.render(rank, True, txt_color)
         surface.blit(num_surf, (rect.x + 6, rect.y + 4))
-        
-        # Center Vector Suit
-        draw_vector_suit(surface, suit, rect.centerx, rect.centery + 10, 28, txt_color)
-        # Small Corner Vector Suit
-        draw_vector_suit(surface, suit, rect.x + 14 + num_surf.get_width(), rect.y + 14, 12, txt_color)
+
+        draw_vector_suit(
+            surface, suit, rect.centerx, rect.centery + 10, 28, txt_color
+        )
+        draw_vector_suit(
+            surface,
+            suit,
+            rect.x + 14 + num_surf.get_width(),
+            rect.y + 14,
+            12,
+            txt_color,
+        )
+
 
 def draw_card_scaled(surface, rect, card, facedown=False):
     if rect.width < 4:
         return
-    pygame.draw.rect(surface, CHARCOAL, (rect.x + 2, rect.y + 2, rect.width, rect.height), 0, 4)
+    pygame.draw.rect(
+        surface, CHARCOAL, (rect.x + 2, rect.y + 2, rect.width, rect.height), 0, 4
+    )
     if facedown:
         pygame.draw.rect(surface, WOOD_LIGHT, rect, 0, 4)
         if rect.width > 20:
-            pygame.draw.rect(surface, VINTAGE_GOLD, (rect.x + 3, rect.y + 3, rect.width - 6, rect.height - 6), 1, 2)
+            pygame.draw.rect(
+                surface,
+                VINTAGE_GOLD,
+                (rect.x + 3, rect.y + 3, rect.width - 6, rect.height - 6),
+                1,
+                2,
+            )
     else:
         rank, suit = card
         pygame.draw.rect(surface, CREAM_WHITE, rect, 0, 4)
@@ -334,16 +452,24 @@ def draw_card_scaled(surface, rect, card, facedown=False):
             txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
             num_surf = card_num_font.render(rank, True, txt_color)
             surface.blit(num_surf, (rect.x + 4, rect.y + 2))
-            
-            # Vector Suit Center
+
             suit_size = int(28 * (rect.width / 80.0))
-            draw_vector_suit(surface, suit, rect.centerx, rect.centery + 10, suit_size, txt_color)
+            draw_vector_suit(
+                surface,
+                suit,
+                rect.centerx,
+                rect.centery + 10,
+                suit_size,
+                txt_color,
+            )
+
 
 async def run_ultimate_hold_em(balance):
     global screen
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(_GAME_TITLE)
     running = True
+
     active_chip_wager = 10
     win_message = "Place Ante & Blind. Trips optional."
     game_stage = "BETTING"
@@ -354,26 +480,33 @@ async def run_ultimate_hold_em(balance):
     community_cards = []
     active_animations = []
 
-    deck_pos = (820, 60)
-
+    deck_pos = (1120, 60)
     bet_ante = 0
     bet_blind = 0
     bet_trips = 0
     bet_play = 0
 
-    player_card_rects = [pygame.Rect(55, 345, 80, 120), pygame.Rect(145, 345, 80, 120)]
-    dealer_card_rects = [pygame.Rect(55, 95, 80, 120), pygame.Rect(145, 95, 80, 120)]
-    community_rects = [pygame.Rect(260 + (i * 90), 220, 80, 120) for i in range(5)]
+    player_card_rects = [
+        pygame.Rect(80, 345, 80, 120),
+        pygame.Rect(170, 345, 80, 120),
+    ]
+    dealer_card_rects = [
+        pygame.Rect(80, 95, 80, 120),
+        pygame.Rect(170, 95, 80, 120),
+    ]
+    community_rects = [
+        pygame.Rect(350 + (i * 95), 220, 80, 120) for i in range(5)
+    ]
 
-    ante_felt_rect = pygame.Rect(440, 100, 110, 80)
-    trips_felt_rect = pygame.Rect(565, 100, 110, 80)
+    ante_felt_rect = pygame.Rect(530, 95, 120, 80)
+    trips_felt_rect = pygame.Rect(670, 95, 120, 80)
 
     chip_selections = [
-        (10, pygame.Rect(55, 595, 45, 45), (240, 240, 240), (40, 40, 40)),
-        (50, pygame.Rect(115, 595, 45, 45), (180, 30, 30), (240, 240, 240)),
-        (100, pygame.Rect(175, 595, 45, 45), (30, 80, 180), (240, 240, 240)),
-        (250, pygame.Rect(235, 595, 45, 45), (30, 130, 60), (212, 163, 89)),
-        (1000, pygame.Rect(295, 595, 45, 45), (30, 30, 30), (212, 163, 89)),
+        (10, pygame.Rect(80, 595, 45, 45), (240, 240, 240), (40, 40, 40)),
+        (50, pygame.Rect(140, 595, 45, 45), (180, 30, 30), (240, 240, 240)),
+        (100, pygame.Rect(200, 595, 45, 45), (30, 80, 180), (240, 240, 240)),
+        (250, pygame.Rect(260, 595, 45, 45), (30, 130, 60), (212, 163, 89)),
+        (1000, pygame.Rect(320, 595, 45, 45), (30, 30, 30), (212, 163, 89)),
     ]
 
     def can_afford(cost):
@@ -390,11 +523,21 @@ async def run_ultimate_hold_em(balance):
         pygame.draw.circle(surface, bg_color, (cx, cy), 14)
         for angle in [0, 90, 180, 270]:
             rad = math.radians(angle)
-            pygame.draw.circle(surface, stripe_color, (int(cx + math.cos(rad) * 11), int(cy + math.sin(rad) * 11)), 2)
+            pygame.draw.circle(
+                surface,
+                stripe_color,
+                (int(cx + math.cos(rad) * 11), int(cy + math.sin(rad) * 11)),
+                2,
+            )
         pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 8)
-        display_str = str(text_val) if text_val < 1000 else f"{text_val // 1000}k"
+        display_str = (
+            str(text_val) if text_val < 1000 else f"{text_val // 1000}k"
+        )
         c_txt = chip_num_font.render(display_str, True, CHARCOAL)
-        surface.blit(c_txt, (cx - (c_txt.get_width() // 2), cy - (c_txt.get_height() // 2)))
+        surface.blit(
+            c_txt,
+            (cx - (c_txt.get_width() // 2), cy - (c_txt.get_height() // 2)),
+        )
 
     def evaluate_and_payout():
         nonlocal balance, bet_ante, bet_blind, bet_trips, bet_play, win_message, game_stage, active_animations
@@ -403,11 +546,21 @@ async def run_ultimate_hold_em(balance):
         p_idx, p_name, p_tie = evaluate_best_5_card_hand(player_cards)
         d_idx, d_name, d_tie = evaluate_best_5_card_hand(dealer_cards)
         dealer_qualifies = d_idx < HAND_RANKS.index("HIGH CARD")
+
         payout = 0
         msg = f"You: {p_name} | Dlr: {d_name}."
 
         for idx, card in enumerate(dealer_hole):
-            active_animations.append(CardAnimation(dealer_card_rects[idx].topleft, dealer_card_rects[idx], card, from_facedown=True, to_facedown=False, is_flip_only=True))
+            active_animations.append(
+                CardAnimation(
+                    dealer_card_rects[idx].topleft,
+                    dealer_card_rects[idx],
+                    card,
+                    from_facedown=True,
+                    to_facedown=False,
+                    is_flip_only=True,
+                )
+            )
         snd_flip.play()
 
         if bet_trips > 0 and p_name in TRIPS_PAYTABLE:
@@ -437,9 +590,12 @@ async def run_ultimate_hold_em(balance):
 
         balance += payout
         original_wager = bet_ante + bet_blind + bet_play + bet_trips
-        win_message = f"🎉 {msg} (+${payout})" if payout > original_wager else f"❌ {msg}"
+        win_message = (
+            f"🎉 {msg} (+${payout})" if payout > original_wager else f"❌ {msg}"
+        )
         bet_ante, bet_blind, bet_trips, bet_play = 0, 0, 0, 0
         game_stage = "RESOLVED"
+
         if payout > original_wager:
             snd_win.play()
         else:
@@ -476,26 +632,58 @@ async def run_ultimate_hold_em(balance):
             player_hole = [deck.pop(), deck.pop()]
             dealer_hole = [deck.pop(), deck.pop()]
             community_cards = [deck.pop() for _ in range(5)]
-
             for i, card in enumerate(player_hole):
-                active_animations.append(CardAnimation(deck_pos, player_card_rects[i], card, from_facedown=False, to_facedown=False))
+                active_animations.append(
+                    CardAnimation(
+                        deck_pos,
+                        player_card_rects[i],
+                        card,
+                        from_facedown=False,
+                        to_facedown=False,
+                    )
+                )
             for i, card in enumerate(dealer_hole):
-                active_animations.append(CardAnimation(deck_pos, dealer_card_rects[i], card, from_facedown=True, to_facedown=True))
+                active_animations.append(
+                    CardAnimation(
+                        deck_pos,
+                        dealer_card_rects[i],
+                        card,
+                        from_facedown=True,
+                        to_facedown=True,
+                    )
+                )
             snd_deal.play()
-
             game_stage = "PRE_FLOP"
             win_message = "Pre-Flop: Raise 4x/3x or Check."
         elif game_stage == "PRE_FLOP":
             game_stage = "FLOP"
             win_message = "Flop: Raise 2x or Check."
             for i in range(3):
-                active_animations.append(CardAnimation(deck_pos, community_rects[i], community_cards[i], from_facedown=True, to_facedown=False, is_flip_only=True))
+                active_animations.append(
+                    CardAnimation(
+                        deck_pos,
+                        community_rects[i],
+                        community_cards[i],
+                        from_facedown=True,
+                        to_facedown=False,
+                        is_flip_only=True,
+                    )
+                )
             snd_flip.play()
         elif game_stage == "FLOP":
             game_stage = "RIVER"
             win_message = "River: Raise 1x or Fold."
             for i in range(3, 5):
-                active_animations.append(CardAnimation(deck_pos, community_rects[i], community_cards[i], from_facedown=True, to_facedown=False, is_flip_only=True))
+                active_animations.append(
+                    CardAnimation(
+                        deck_pos,
+                        community_rects[i],
+                        community_cards[i],
+                        from_facedown=True,
+                        to_facedown=False,
+                        is_flip_only=True,
+                    )
+                )
             snd_flip.play()
 
     def cb_action_btn1():
@@ -505,7 +693,16 @@ async def run_ultimate_hold_em(balance):
             balance -= bet_play
             game_stage = "RIVER"
             for i in range(5):
-                active_animations.append(CardAnimation(deck_pos, community_rects[i], community_cards[i], from_facedown=True, to_facedown=False, is_flip_only=True))
+                active_animations.append(
+                    CardAnimation(
+                        deck_pos,
+                        community_rects[i],
+                        community_cards[i],
+                        from_facedown=True,
+                        to_facedown=False,
+                        is_flip_only=True,
+                    )
+                )
             snd_flip.play()
             evaluate_and_payout()
         elif game_stage == "FLOP" and can_afford(bet_ante * 2):
@@ -513,7 +710,16 @@ async def run_ultimate_hold_em(balance):
             balance -= bet_play
             game_stage = "RIVER"
             for i in range(3, 5):
-                active_animations.append(CardAnimation(deck_pos, community_rects[i], community_cards[i], from_facedown=True, to_facedown=False, is_flip_only=True))
+                active_animations.append(
+                    CardAnimation(
+                        deck_pos,
+                        community_rects[i],
+                        community_cards[i],
+                        from_facedown=True,
+                        to_facedown=False,
+                        is_flip_only=True,
+                    )
+                )
             snd_flip.play()
             evaluate_and_payout()
         elif game_stage == "RIVER" and can_afford(bet_ante):
@@ -528,7 +734,16 @@ async def run_ultimate_hold_em(balance):
             balance -= bet_play
             game_stage = "RIVER"
             for i in range(5):
-                active_animations.append(CardAnimation(deck_pos, community_rects[i], community_cards[i], from_facedown=True, to_facedown=False, is_flip_only=True))
+                active_animations.append(
+                    CardAnimation(
+                        deck_pos,
+                        community_rects[i],
+                        community_cards[i],
+                        from_facedown=True,
+                        to_facedown=False,
+                        is_flip_only=True,
+                    )
+                )
             snd_flip.play()
             evaluate_and_payout()
         elif game_stage == "RIVER":
@@ -548,15 +763,26 @@ async def run_ultimate_hold_em(balance):
             game_stage = "BETTING"
             win_message = "Place Ante & Blind. Trips optional."
 
-    btn_1_widget = UIWidget((440, 580, 120, 45), "", BRIGHT_RED, CREAM_WHITE, cb_action_btn1)
-    btn_2_widget = UIWidget((570, 580, 120, 45), "", CHARCOAL, CREAM_WHITE, cb_action_btn2)
-    clear_widget = UIWidget((720, 520, 180, 45), "CLEAR CHIPS", CHARCOAL, CREAM_WHITE, cb_clear_chips)
-    action_widget = UIWidget((720, 580, 180, 45), "DEAL HOLE", BRIGHT_RED, CREAM_WHITE, cb_deal_or_check)
+    btn_1_widget = UIWidget(
+        (600, 580, 140, 45), "", BRIGHT_RED, CREAM_WHITE, cb_action_btn1
+    )
+    btn_2_widget = UIWidget(
+        (755, 580, 140, 45), "", CHARCOAL, CREAM_WHITE, cb_action_btn2
+    )
+    clear_widget = UIWidget(
+        (1050, 520, 180, 45),
+        "CLEAR CHIPS",
+        CHARCOAL,
+        CREAM_WHITE,
+        cb_clear_chips,
+    )
+    action_widget = UIWidget(
+        (1050, 580, 180, 45), "DEAL HOLE", BRIGHT_RED, CREAM_WHITE, cb_deal_or_check
+    )
 
     # ============================================================
-    #                        MAIN GAME LOOP
+    # MAIN GAME LOOP
     # ============================================================
-
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -564,16 +790,13 @@ async def run_ultimate_hold_em(balance):
                 sys.exit()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
-
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Handle widget buttons first and short-circuit event propagation if handled
                 handled = (
-                    action_widget.handle_event(event) or
-                    clear_widget.handle_event(event) or
-                    btn_1_widget.handle_event(event) or
-                    btn_2_widget.handle_event(event)
+                    action_widget.handle_event(event)
+                    or clear_widget.handle_event(event)
+                    or btn_1_widget.handle_event(event)
+                    or btn_2_widget.handle_event(event)
                 )
-
                 if not handled:
                     mouse_pos = event.pos
                     if game_stage == "BETTING":
@@ -589,7 +812,7 @@ async def run_ultimate_hold_em(balance):
         if game_stage == "BETTING":
             action_widget.label = "DEAL HOLE"
             action_widget.callback = cb_deal_or_check
-            action_widget.visible = (bet_ante > 0)
+            action_widget.visible = bet_ante > 0
             clear_widget.visible = True
             clear_widget.label = "CLEAR CHIPS"
             clear_widget.callback = cb_clear_chips
@@ -650,19 +873,34 @@ async def run_ultimate_hold_em(balance):
         pygame.draw.rect(screen, WOOD_LIGHT, (10, 10, WIDTH - 20, HEIGHT - 20), 10)
         pygame.draw.rect(screen, FELT_GREEN, (20, 20, WIDTH - 40, HEIGHT - 40))
 
-        pygame.draw.rect(screen, CHARCOAL, (deck_pos[0] + 3, deck_pos[1] + 3, 80, 120), 0, 6)
+        pygame.draw.rect(
+            screen, CHARCOAL, (deck_pos[0] + 3, deck_pos[1] + 3, 80, 120), 0, 6
+        )
         pygame.draw.rect(screen, WOOD_LIGHT, (deck_pos[0], deck_pos[1], 80, 120), 0, 6)
-        pygame.draw.rect(screen, VINTAGE_GOLD, (deck_pos[0] + 5, deck_pos[1] + 5, 70, 110), 2, 4)
+        pygame.draw.rect(
+            screen,
+            VINTAGE_GOLD,
+            (deck_pos[0] + 5, deck_pos[1] + 5, 70, 110),
+            2,
+            4,
+        )
 
-        screen.blit(ui_font.render("DEALER HAND", True, VINTAGE_GOLD), (55, 60))
+        screen.blit(ui_font.render("DEALER HAND", True, VINTAGE_GOLD), (80, 60))
         if len(dealer_hole) > 0:
-            hide_dealer = (game_stage != "RESOLVED")
+            hide_dealer = game_stage != "RESOLVED"
             for idx, card in enumerate(dealer_hole):
-                animating = any(anim.target_rect == dealer_card_rects[idx] for anim in active_animations)
+                animating = any(
+                    anim.target_rect == dealer_card_rects[idx]
+                    for anim in active_animations
+                )
                 if not animating:
-                    draw_card(screen, dealer_card_rects[idx], card, facedown=hide_dealer)
+                    draw_card(
+                        screen, dealer_card_rects[idx], card, facedown=hide_dealer
+                    )
 
-        screen.blit(ui_font.render("COMMUNITY BOARD", True, VINTAGE_GOLD), (260, 185))
+        screen.blit(
+            ui_font.render("COMMUNITY BOARD", True, VINTAGE_GOLD), (350, 185)
+        )
         if game_stage in ["PRE_FLOP", "FLOP", "RIVER", "RESOLVED"]:
             for i in range(5):
                 hide_comm = True
@@ -671,14 +909,25 @@ async def run_ultimate_hold_em(balance):
                 if game_stage in ["RIVER", "RESOLVED"]:
                     hide_comm = False
                 if len(community_cards) > 0:
-                    animating = any(anim.target_rect == community_rects[i] for anim in active_animations)
+                    animating = any(
+                        anim.target_rect == community_rects[i]
+                        for anim in active_animations
+                    )
                     if not animating:
-                        draw_card(screen, community_rects[i], community_cards[i], facedown=hide_comm)
+                        draw_card(
+                            screen,
+                            community_rects[i],
+                            community_cards[i],
+                            facedown=hide_comm,
+                        )
 
-        screen.blit(ui_font.render("YOUR HOLE CARDS", True, VINTAGE_GOLD), (55, 310))
+        screen.blit(ui_font.render("YOUR HOLE CARDS", True, VINTAGE_GOLD), (80, 310))
         if len(player_hole) > 0:
             for idx, card in enumerate(player_hole):
-                animating = any(anim.target_rect == player_card_rects[idx] for anim in active_animations)
+                animating = any(
+                    anim.target_rect == player_card_rects[idx]
+                    for anim in active_animations
+                )
                 if not animating:
                     draw_card(screen, player_card_rects[idx], card, facedown=False)
 
@@ -686,55 +935,142 @@ async def run_ultimate_hold_em(balance):
             anim.draw(screen)
 
         if game_stage == "BETTING":
-            pygame.draw.rect(screen, (FELT_GREEN if bet_ante == 0 else GOLD_SHADOW), ante_felt_rect, 0, 4)
+            pygame.draw.rect(
+                screen,
+                (FELT_GREEN if bet_ante == 0 else GOLD_SHADOW),
+                ante_felt_rect,
+                0,
+                4,
+            )
             pygame.draw.rect(screen, CREAM_WHITE, ante_felt_rect, 2, 4)
-            screen.blit(label_font.render("ANTE & BLIND", True, (CREAM_WHITE if bet_ante == 0 else CHARCOAL)), (ante_felt_rect.x + 8, ante_felt_rect.y + 15))
-            screen.blit(label_font.render("(AUTO MATCH)", True, (VINTAGE_GOLD if bet_ante == 0 else CHARCOAL)), (ante_felt_rect.x + 8, ante_felt_rect.y + 45))
+            screen.blit(
+                label_font.render(
+                    "ANTE & BLIND",
+                    True,
+                    (CREAM_WHITE if bet_ante == 0 else CHARCOAL),
+                ),
+                (ante_felt_rect.x + 12, ante_felt_rect.y + 15),
+            )
+            screen.blit(
+                label_font.render(
+                    "(AUTO MATCH)",
+                    True,
+                    (VINTAGE_GOLD if bet_ante == 0 else CHARCOAL),
+                ),
+                (ante_felt_rect.x + 12, ante_felt_rect.y + 45),
+            )
             if bet_ante > 0:
                 draw_chip_stack(screen, ante_felt_rect, bet_ante)
 
-            pygame.draw.rect(screen, (FELT_GREEN if bet_trips == 0 else GOLD_SHADOW), trips_felt_rect, 0, 4)
+            pygame.draw.rect(
+                screen,
+                (FELT_GREEN if bet_trips == 0 else GOLD_SHADOW),
+                trips_felt_rect,
+                0,
+                4,
+            )
             pygame.draw.rect(screen, CREAM_WHITE, trips_felt_rect, 2, 4)
-            screen.blit(label_font.render("TRIPS SIDEBET", True, (CREAM_WHITE if bet_trips == 0 else CHARCOAL)), (trips_felt_rect.x + 6, trips_felt_rect.y + 15))
-            screen.blit(label_font.render("(BONUS)", True, (VINTAGE_GOLD if bet_trips == 0 else CHARCOAL)), (trips_felt_rect.x + 30, trips_felt_rect.y + 45))
+            screen.blit(
+                label_font.render(
+                    "TRIPS SIDEBET",
+                    True,
+                    (CREAM_WHITE if bet_trips == 0 else CHARCOAL),
+                ),
+                (trips_felt_rect.x + 10, trips_felt_rect.y + 15),
+            )
+            screen.blit(
+                label_font.render(
+                    "(BONUS)",
+                    True,
+                    (VINTAGE_GOLD if bet_trips == 0 else CHARCOAL),
+                ),
+                (trips_felt_rect.x + 34, trips_felt_rect.y + 45),
+            )
             if bet_trips > 0:
                 draw_chip_stack(screen, trips_felt_rect, bet_trips)
 
-        pygame.draw.rect(screen, CHARCOAL, (720, 380, 180, 110))
-        pygame.draw.rect(screen, CHROME_SHADOW, (720, 380, 180, 110), 2)
-        screen.blit(label_font.render(f"ANTE: ${bet_ante}", True, CREAM_WHITE), (735, 395))
-        screen.blit(label_font.render(f"BLIND: ${bet_blind}", True, CREAM_WHITE), (735, 425))
-        screen.blit(label_font.render(f"PLAY: ${bet_play}", True, VINTAGE_GOLD), (735, 455))
+        pygame.draw.rect(screen, CHARCOAL, (1050, 380, 180, 110))
+        pygame.draw.rect(screen, CHROME_SHADOW, (1050, 380, 180, 110), 2)
+        screen.blit(
+            label_font.render(f"ANTE: ${bet_ante}", True, CREAM_WHITE),
+            (1065, 395),
+        )
+        screen.blit(
+            label_font.render(f"BLIND: ${bet_blind}", True, CREAM_WHITE),
+            (1065, 425),
+        )
+        screen.blit(
+            label_font.render(f"PLAY: ${bet_play}", True, VINTAGE_GOLD),
+            (1065, 455),
+        )
 
-        pygame.draw.rect(screen, CHARCOAL, (45, 480, 330, 100))
-        pygame.draw.rect(screen, CHROME_SHADOW, (45, 480, 330, 100), 2)
-        screen.blit(ui_font.render(f"YOUR BANKROLL: ${balance}", True, CREAM_WHITE), (65, 500))
-        screen.blit(label_font.render(f"ACTIVE CHIP SELECTION: ${active_chip_wager}", True, VINTAGE_GOLD), (65, 540))
+        pygame.draw.rect(screen, CHARCOAL, (65, 480, 330, 100))
+        pygame.draw.rect(screen, CHROME_SHADOW, (65, 480, 330, 100), 2)
+        screen.blit(
+            ui_font.render(f"YOUR BANKROLL: ${balance}", True, CREAM_WHITE),
+            (85, 500),
+        )
+        screen.blit(
+            label_font.render(
+                f"ACTIVE CHIP SELECTION: ${active_chip_wager}",
+                True,
+                VINTAGE_GOLD,
+            ),
+            (85, 540),
+        )
 
         for val, rect, col_bg, col_str in chip_selections:
-            is_sel_chip = (active_chip_wager == val)
-            pygame.draw.circle(screen, (VINTAGE_GOLD if is_sel_chip else CHARCOAL), rect.center, 24)
+            is_sel_chip = active_chip_wager == val
+            pygame.draw.circle(
+                screen,
+                (VINTAGE_GOLD if is_sel_chip else CHARCOAL),
+                rect.center,
+                24,
+            )
             pygame.draw.circle(screen, col_bg, rect.center, 21)
             for angle in [0, 90, 180, 270]:
-                pygame.draw.circle(screen, col_str, (int(rect.centerx + math.cos(math.radians(angle)) * 16), int(rect.centery + math.sin(math.radians(angle)) * 16)), 3)
+                pygame.draw.circle(
+                    screen,
+                    col_str,
+                    (
+                        int(rect.centerx + math.cos(math.radians(angle)) * 16),
+                        int(rect.centery + math.sin(math.radians(angle)) * 16),
+                    ),
+                    3,
+                )
             pygame.draw.circle(screen, CREAM_WHITE, rect.center, 14)
             display_str = str(val) if val < 1000 else f"{val // 1000}k"
-            screen.blit(chip_num_font.render(f"${display_str}", True, CHARCOAL), (rect.centerx - 11, rect.centery - 6))
+            screen.blit(
+                chip_num_font.render(f"${display_str}", True, CHARCOAL),
+                (rect.centerx - 11, rect.centery - 6),
+            )
 
         btn_1_widget.draw(screen, label_font)
         btn_2_widget.draw(screen, label_font)
         clear_widget.draw(screen, label_font)
         action_widget.draw(screen, label_font)
 
-        pygame.draw.rect(screen, CHARCOAL, (45, 660, 855, 45))
-        pygame.draw.rect(screen, VINTAGE_GOLD, (45, 660, 855, 45), 2)
-        msg_color = VINTAGE_GOLD if ("WIN" in win_message or "🎉" in win_message) else (BRIGHT_RED if ("❌" in win_message or "Folded" in win_message) else CREAM_WHITE)
+        pygame.draw.rect(screen, CHARCOAL, (45, 660, WIDTH - 90, 45))
+        pygame.draw.rect(screen, VINTAGE_GOLD, (45, 660, WIDTH - 90, 45), 2)
+        msg_color = (
+            VINTAGE_GOLD
+            if ("WIN" in win_message or "🎉" in win_message)
+            else (
+                BRIGHT_RED
+                if ("❌" in win_message or "Folded" in win_message)
+                else CREAM_WHITE
+            )
+        )
         msg_surf = ui_font.render(win_message, True, msg_color)
-        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 674))
+        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 672))
 
-        _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
-        screen.blit(_hint_surf, (10, HEIGHT - 22))
+        _hint_surf = _lobby_hint_font.render(
+            "ESC: Return to Lobby", True, (230, 200, 140)
+        )
+        screen.blit(_hint_surf, (20, HEIGHT - 24))
+
         pygame.display.flip()
         await asyncio.sleep(0)
         clock.tick(60)
+
     return balance
