@@ -34,14 +34,13 @@ BRIGHT_RED = (190, 25, 25)
 
 
 class MenuButton:
-    def __init__(self, rect, title, game_key, card_font):
+    def __init__(self, rect, title, game_key):
         self.rect = pygame.Rect(rect)
         self.title = title
         self.game_key = game_key
         self.hovered = False
-        self.card_font = card_font
 
-    def draw(self, surface):
+    def draw(self, surface, font):
         bg_col = BRIGHT_RED if self.hovered else CHARCOAL
         border_col = VINTAGE_GOLD if self.hovered else CREAM_WHITE
 
@@ -50,7 +49,7 @@ class MenuButton:
         pygame.draw.rect(surface, border_col, self.rect, 2, 8)
 
         # Title Label
-        txt = self.card_font.render(self.title, True, CREAM_WHITE)
+        txt = font.render(self.title, True, CREAM_WHITE)
         surface.blit(
             txt,
             (
@@ -88,11 +87,11 @@ async def main():
     pygame.display.flip()
     await asyncio.sleep(0)
 
-    # Initialize Fonts after display is live
-    title_font = pygame.font.SysFont("georgia", 36, bold=True)
-    subtitle_font = pygame.font.SysFont("georgia", 18, italic=True)
-    card_font = pygame.font.SysFont("arial", 16, bold=True)
-    hud_font = pygame.font.SysFont("arial", 20, bold=True)
+    # Use Pygame's built-in WebAssembly-safe font (None)
+    title_font = pygame.font.Font(None, 44)
+    subtitle_font = pygame.font.Font(None, 24)
+    card_font = pygame.font.Font(None, 20)
+    hud_font = pygame.font.Font(None, 26)
 
     player_balance = 1000
 
@@ -115,15 +114,15 @@ async def main():
 
     buttons = [
         # Row 1
-        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "BLACKJACK", "blackjack", card_font),
-        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "CRAPS", "craps", card_font),
-        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "KENO", "keno", card_font),
-        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "HORSE DERBY", "mechanical_derby", card_font),
+        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "BLACKJACK", "blackjack"),
+        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "CRAPS", "craps"),
+        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "KENO", "keno"),
+        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "HORSE DERBY", "mechanical_derby"),
         # Row 2
-        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "ROULETTE", "roulette", card_font),
-        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "SLOTS", "slots", card_font),
-        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "HOLD 'EM", "ultimate_hold_em", card_font),
-        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "VIDEO POKER", "video_poker", card_font),
+        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "ROULETTE", "roulette"),
+        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "SLOTS", "slots"),
+        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "HOLD 'EM", "ultimate_hold_em"),
+        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "VIDEO POKER", "video_poker"),
     ]
 
     running = True
@@ -141,11 +140,11 @@ async def main():
                 if launched_game:
                     next_game = launched_game
 
-        # Safe launch outside the event iteration loop
+        # Safe launch outside event loop
         if next_game and next_game in game_launchers:
             player_balance = await game_launchers[next_game](player_balance)
             
-            # Re-bind screen and clear pending input states upon return
+            # Re-bind screen and clear pending inputs upon return
             screen = pygame.display.set_mode((WIDTH, HEIGHT))
             pygame.display.set_caption("The Terminal Casino - Main Lobby")
             pygame.event.clear()
@@ -170,7 +169,7 @@ async def main():
 
         # Menu Buttons
         for btn in buttons:
-            btn.draw(screen)
+            btn.draw(screen, card_font)
 
         pygame.display.flip()
         clock.tick(60)
