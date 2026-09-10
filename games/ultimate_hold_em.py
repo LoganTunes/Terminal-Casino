@@ -7,7 +7,7 @@ import math
 import itertools
 
 # ============================================================
-#       ORIGINAL CASINO MATH ENGINE & GAME LOGIC
+#        ORIGINAL CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 SUITS = ["♥", "♦", "♣", "♠"]
@@ -125,7 +125,49 @@ def evaluate_best_5_card_hand(seven_cards):
     return best_rank_idx, best_rank_name, best_tie_breaker
 
 # ============================================================
-#       REFACTORED WIDGET ENGINE & STATE DISPATCHER
+#        VECTOR SUIT DRAWING HELPER
+# ============================================================
+
+def draw_vector_suit(surface, suit_str, center_x, center_y, size, color):
+    cx, cy = center_x, center_y
+    r = size / 2.0
+
+    if suit_str == "♦":  # Diamond
+        points = [(cx, cy - r), (cx + r * 0.8, cy), (cx, cy + r), (cx - r * 0.8, cy)]
+        pygame.draw.polygon(surface, color, points)
+
+    elif suit_str == "♥":  # Heart
+        points = []
+        for t in [i * 0.05 for i in range(126)]:
+            angle = t * math.pi
+            x = 16 * (math.sin(angle) ** 3)
+            y = -(13 * math.cos(angle) - 5 * math.cos(2 * angle) - 2 * math.cos(3 * angle) - math.cos(4 * angle))
+            points.append((cx + (x / 17.0) * r, cy + (y / 17.0) * r))
+        pygame.draw.polygon(surface, color, points)
+
+    elif suit_str == "♠":  # Spade
+        points = []
+        for t in [i * 0.05 for i in range(126)]:
+            angle = t * math.pi
+            x = 16 * (math.sin(angle) ** 3)
+            y = (13 * math.cos(angle) - 5 * math.cos(2 * angle) - 2 * math.cos(3 * angle) - math.cos(4 * angle))
+            points.append((cx + (x / 17.0) * r, cy + (y / 17.0) * r - r * 0.1))
+        pygame.draw.polygon(surface, color, points)
+        # Base stem
+        stem_rect = pygame.Rect(cx - r * 0.15, cy, r * 0.3, r * 0.95)
+        pygame.draw.rect(surface, color, stem_rect)
+
+    elif suit_str == "♣":  # Club
+        leaf_r = r * 0.42
+        pygame.draw.circle(surface, color, (int(cx), int(cy - r * 0.35)), int(leaf_r))
+        pygame.draw.circle(surface, color, (int(cx - r * 0.4), int(cy + r * 0.15)), int(leaf_r))
+        pygame.draw.circle(surface, color, (int(cx + r * 0.4), int(cy + r * 0.15)), int(leaf_r))
+        # Base stem
+        stem_rect = pygame.Rect(cx - r * 0.15, cy, r * 0.3, r * 0.9)
+        pygame.draw.rect(surface, color, stem_rect)
+
+# ============================================================
+#        REFACTORED WIDGET ENGINE & STATE DISPATCHER
 # ============================================================
 
 class UIWidget:
@@ -155,7 +197,7 @@ class UIWidget:
         return False
 
 # ============================================================
-#       CARD DEALING & FLIPPING ANIMATION ENGINE
+#        CARD DEALING & FLIPPING ANIMATION ENGINE
 # ============================================================
 
 class CardAnimation:
@@ -192,7 +234,7 @@ class CardAnimation:
             draw_card_scaled(surface, sliding_rect, self.card, facedown=self.from_facedown)
 
 # ============================================================
-#           PYGAME VISUAL ENGINE INITIALIZATION
+#            PYGAME VISUAL ENGINE INITIALIZATION
 # ============================================================
 
 pygame.init()
@@ -211,14 +253,13 @@ def generate_noise_burst(duration_ms, volume=0.2, filter_low=False):
     buffer = array.array("h", [0] + [0] * (total_samples - 1))
     last_val = 0
     for i in range(total_samples):
-        # White noise filtered into brown/pink noise via smoothing for a heavy cloth/wood thump
         raw = random.randint(-32767, 32767)
         if filter_low:
             last_val = (last_val * 0.85) + (raw * 0.15)
             val = int(last_val)
         else:
             val = raw
-        envelope = math.exp(-3.0 * (i / total_samples)) # sharp exponential decay
+        envelope = math.exp(-3.0 * (i / total_samples))
         buffer[i] = int(val * volume * envelope)
     return pygame.mixer.Sound(buffer=buffer)
 
@@ -236,13 +277,12 @@ def generate_harmonic_clink(freqs, duration_ms, volume=0.2):
         buffer[i] = val
     return pygame.mixer.Sound(buffer=buffer)
 
-# Organic acoustic-style procedural sound effects mimicking physical casino environment
-snd_slide = generate_noise_burst(70, volume=0.15, filter_low=True)       # card slide over felt
-snd_deal = generate_noise_burst(40, volume=0.2, filter_low=False)        # sharp card snap off deck
-snd_flip = generate_noise_burst(50, volume=0.18, filter_low=True)        # card turn over table felt
-snd_chip = generate_harmonic_clink([2400, 3100, 4200], 35, volume=0.25)  # ceramic poker chip high clink
-snd_win = generate_harmonic_clink([523.25, 659.25, 783.99, 1046.50], 400, volume=0.15) # major chord chime for payout
-snd_lose = generate_noise_burst(180, volume=0.25, filter_low=True)       # dull heavy thud for loss/fold
+snd_slide = generate_noise_burst(70, volume=0.15, filter_low=True)
+snd_deal = generate_noise_burst(40, volume=0.2, filter_low=False)
+snd_flip = generate_noise_burst(50, volume=0.18, filter_low=True)
+snd_chip = generate_harmonic_clink([2400, 3100, 4200], 35, volume=0.25)
+snd_win = generate_harmonic_clink([523.25, 659.25, 783.99, 1046.50], 400, volume=0.15)
+snd_lose = generate_noise_burst(180, volume=0.25, filter_low=True)
 
 FELT_GREEN = (10, 68, 33)
 MAHOGANY = (56, 18, 11)
@@ -254,13 +294,50 @@ CREAM_WHITE = (247, 245, 230)
 CHARCOAL = (24, 24, 24)
 BRIGHT_RED = (190, 25, 25)
 
-font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
-ui_font = pygame.font.SysFont(font_options, 18, bold=True)  
-label_font = pygame.font.SysFont(font_options, 14, bold=True)
+ui_font = pygame.font.SysFont("arial", 18, bold=True)  
+label_font = pygame.font.SysFont("arial", 14, bold=True)
 card_num_font = pygame.font.SysFont("georgia", 22, bold=True)
-card_suit_font = pygame.font.SysFont(font_options, 32)
 chip_num_font = pygame.font.SysFont("arial", 11, bold=True)
 
+def draw_card(surface, rect, card, facedown=False):
+    pygame.draw.rect(surface, CHARCOAL, (rect.x + 3, rect.y + 3, rect.width, rect.height), 0, 6)
+    if facedown:
+        pygame.draw.rect(surface, WOOD_LIGHT, rect, 0, 6)
+        pygame.draw.rect(surface, VINTAGE_GOLD, (rect.x + 5, rect.y + 5, rect.width - 10, rect.height - 10), 2, 4)
+        pygame.draw.rect(surface, CHARCOAL, (rect.x + 8, rect.y + 8, rect.width - 16, rect.height - 16), 0, 3)
+    else:
+        rank, suit = card
+        pygame.draw.rect(surface, CREAM_WHITE, rect, 0, 6)
+        pygame.draw.rect(surface, CHROME_SHADOW, rect, 1, 6)
+        txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
+        num_surf = card_num_font.render(rank, True, txt_color)
+        surface.blit(num_surf, (rect.x + 6, rect.y + 4))
+        
+        # Center Vector Suit
+        draw_vector_suit(surface, suit, rect.centerx, rect.centery + 10, 28, txt_color)
+        # Small Corner Vector Suit
+        draw_vector_suit(surface, suit, rect.x + 14 + num_surf.get_width(), rect.y + 14, 12, txt_color)
+
+def draw_card_scaled(surface, rect, card, facedown=False):
+    if rect.width < 4:
+        return
+    pygame.draw.rect(surface, CHARCOAL, (rect.x + 2, rect.y + 2, rect.width, rect.height), 0, 4)
+    if facedown:
+        pygame.draw.rect(surface, WOOD_LIGHT, rect, 0, 4)
+        if rect.width > 20:
+            pygame.draw.rect(surface, VINTAGE_GOLD, (rect.x + 3, rect.y + 3, rect.width - 6, rect.height - 6), 1, 2)
+    else:
+        rank, suit = card
+        pygame.draw.rect(surface, CREAM_WHITE, rect, 0, 4)
+        pygame.draw.rect(surface, CHROME_SHADOW, rect, 1, 4)
+        if rect.width > 35:
+            txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
+            num_surf = card_num_font.render(rank, True, txt_color)
+            surface.blit(num_surf, (rect.x + 4, rect.y + 2))
+            
+            # Vector Suit Center
+            suit_size = int(28 * (rect.width / 80.0))
+            draw_vector_suit(surface, suit, rect.centerx, rect.centery + 10, suit_size, txt_color)
 
 async def run_ultimate_hold_em(balance):
     global screen
@@ -318,41 +395,6 @@ async def run_ultimate_hold_em(balance):
         display_str = str(text_val) if text_val < 1000 else f"{text_val // 1000}k"
         c_txt = chip_num_font.render(display_str, True, CHARCOAL)
         surface.blit(c_txt, (cx - (c_txt.get_width() // 2), cy - (c_txt.get_height() // 2)))
-
-    def draw_card(surface, rect, card, facedown=False):
-        pygame.draw.rect(surface, CHARCOAL, (rect.x + 3, rect.y + 3, rect.width, rect.height), 0, 6)
-        if facedown:
-            pygame.draw.rect(surface, WOOD_LIGHT, rect, 0, 6)
-            pygame.draw.rect(surface, VINTAGE_GOLD, (rect.x + 5, rect.y + 5, rect.width - 10, rect.height - 10), 2, 4)
-            pygame.draw.rect(surface, CHARCOAL, (rect.x + 8, rect.y + 8, rect.width - 16, rect.height - 16), 0, 3)
-        else:
-            rank, suit = card
-            pygame.draw.rect(surface, CREAM_WHITE, rect, 0, 6)
-            pygame.draw.rect(surface, CHROME_SHADOW, rect, 1, 6)
-            txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
-            num_surf = card_num_font.render(rank, True, txt_color)
-            surface.blit(num_surf, (rect.x + 6, rect.y + 4))
-            suit_surf = card_suit_font.render(suit, True, txt_color)
-            surface.blit(suit_surf, (rect.centerx - suit_surf.get_width() // 2, rect.centery - suit_surf.get_height() // 2))
-
-    def draw_card_scaled(surface, rect, card, facedown=False):
-        if rect.width < 4:
-            return
-        pygame.draw.rect(surface, CHARCOAL, (rect.x + 2, rect.y + 2, rect.width, rect.height), 0, 4)
-        if facedown:
-            pygame.draw.rect(surface, WOOD_LIGHT, rect, 0, 4)
-            if rect.width > 20:
-                pygame.draw.rect(surface, VINTAGE_GOLD, (rect.x + 3, rect.y + 3, rect.width - 6, rect.height - 6), 1, 2)
-        else:
-            rank, suit = card
-            pygame.draw.rect(surface, CREAM_WHITE, rect, 0, 4)
-            pygame.draw.rect(surface, CHROME_SHADOW, rect, 1, 4)
-            if rect.width > 35:
-                txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
-                num_surf = card_num_font.render(rank, True, txt_color)
-                surface.blit(num_surf, (rect.x + 4, rect.y + 2))
-                suit_surf = card_suit_font.render(suit, True, txt_color)
-                surface.blit(suit_surf, (rect.centerx - suit_surf.get_width() // 2, rect.centery - suit_surf.get_height() // 2))
 
     def evaluate_and_payout():
         nonlocal balance, bet_ante, bet_blind, bet_trips, bet_play, win_message, game_stage, active_animations
@@ -524,21 +566,25 @@ async def run_ultimate_hold_em(balance):
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = event.pos
-                if game_stage == "BETTING":
-                    for val, rect, _, _ in chip_selections:
-                        if rect.collidepoint(mouse_pos):
-                            active_chip_wager = val
-                            snd_chip.play()
-                    if ante_felt_rect.collidepoint(mouse_pos):
-                        cb_ante_bet()
-                    elif trips_felt_rect.collidepoint(mouse_pos):
-                        cb_trips_bet()
+                # Handle widget buttons first and short-circuit event propagation if handled
+                handled = (
+                    action_widget.handle_event(event) or
+                    clear_widget.handle_event(event) or
+                    btn_1_widget.handle_event(event) or
+                    btn_2_widget.handle_event(event)
+                )
 
-                clear_widget.handle_event(event)
-                action_widget.handle_event(event)
-                btn_1_widget.handle_event(event)
-                btn_2_widget.handle_event(event)
+                if not handled:
+                    mouse_pos = event.pos
+                    if game_stage == "BETTING":
+                        for val, rect, _, _ in chip_selections:
+                            if rect.collidepoint(mouse_pos):
+                                active_chip_wager = val
+                                snd_chip.play()
+                        if ante_felt_rect.collidepoint(mouse_pos):
+                            cb_ante_bet()
+                        elif trips_felt_rect.collidepoint(mouse_pos):
+                            cb_trips_bet()
 
         if game_stage == "BETTING":
             action_widget.label = "DEAL HOLE"
