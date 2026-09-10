@@ -251,7 +251,7 @@ SUIT_ICONS_16 = {s: create_flat_suit_icon(s, 16) for s in SUITS}
 #                    ANIMATED CARD CLASS
 # ============================================================
 
-DECK_SHOE_POS = (820, 25)
+DECK_SHOE_POS = (730, 25)
 
 
 class AnimatedCard:
@@ -388,31 +388,31 @@ async def run_blackjack(balance):
     dealer_timer = 0
     DEALER_DRAW_DELAY = 900
 
-    # PERFECTLY SPACED LAYOUT RECTANGLES
+    # PERFECTLY CENTERED BOUNDARIES FOR 950x720
     betting_spots = [
-        pygame.Rect(180, 470, 60, 60),
-        pygame.Rect(310, 480, 60, 60),
-        pygame.Rect(445, 485, 60, 60),
-        pygame.Rect(580, 480, 60, 60),
-        pygame.Rect(710, 470, 60, 60),
+        pygame.Rect(185, 420, 60, 60),
+        pygame.Rect(315, 430, 60, 60),
+        pygame.Rect(445, 435, 60, 60),
+        pygame.Rect(575, 430, 60, 60),
+        pygame.Rect(705, 420, 60, 60),
     ]
 
     deal_box_rect = betting_spots[2]
 
     # Control Buttons
-    hit_btn_rect = pygame.Rect(230, 560, 100, 40)
-    stand_btn_rect = pygame.Rect(345, 560, 100, 40)
-    double_btn_rect = pygame.Rect(460, 560, 100, 40)
+    hit_btn_rect = pygame.Rect(290, 520, 110, 42)
+    stand_btn_rect = pygame.Rect(420, 520, 110, 42)
+    double_btn_rect = pygame.Rect(550, 520, 110, 42)
 
-    deal_trigger_rect = pygame.Rect(260, 560, 130, 40)
-    clear_btn_rect = pygame.Rect(410, 560, 130, 40)
+    deal_trigger_rect = pygame.Rect(330, 520, 135, 42)
+    clear_btn_rect = pygame.Rect(485, 520, 135, 42)
 
     chip_selections = [
-        (10, pygame.Rect(590, 564, 30, 30), (240, 240, 240), (40, 40, 40)),
-        (50, pygame.Rect(628, 564, 30, 30), (180, 30, 30), (240, 240, 240)),
-        (100, pygame.Rect(666, 564, 30, 30), (30, 80, 180), (240, 240, 240)),
-        (250, pygame.Rect(704, 564, 30, 30), (30, 130, 60), (212, 163, 89)),
-        (1000, pygame.Rect(742, 564, 30, 30), (40, 40, 40), (230, 185, 105)),
+        (10, pygame.Rect(650, 526, 30, 30), (240, 240, 240), (40, 40, 40)),
+        (50, pygame.Rect(688, 526, 30, 30), (180, 30, 30), (240, 240, 240)),
+        (100, pygame.Rect(726, 526, 30, 30), (30, 80, 180), (240, 240, 240)),
+        (250, pygame.Rect(764, 526, 30, 30), (30, 130, 60), (212, 163, 89)),
+        (1000, pygame.Rect(802, 526, 30, 30), (40, 40, 40), (230, 185, 105)),
     ]
 
     def draw_wood_panel(surface, rect):
@@ -446,15 +446,15 @@ async def run_blackjack(balance):
 
     def draw_table_stencils(surface):
         bj_txt = stencil_large.render("BLACKJACK PAYS 3 TO 2", True, GOLD_TEXT)
-        surface.blit(bj_txt, (WIDTH // 2 - bj_txt.get_width() // 2, 205))
+        surface.blit(bj_txt, (WIDTH // 2 - bj_txt.get_width() // 2, 190))
 
         d_rule = stencil_small.render("Dealer must draw to 16 and stand on all 17s", True, GOLD_TEXT)
-        surface.blit(d_rule, (WIDTH // 2 - d_rule.get_width() // 2, 230))
+        surface.blit(d_rule, (WIDTH // 2 - d_rule.get_width() // 2, 215))
 
         ins_txt = stencil_small.render("INSURANCE PAYS 2 TO 1", True, GOLD_TEXT)
-        surface.blit(ins_txt, (WIDTH // 2 - ins_txt.get_width() // 2, 248))
+        surface.blit(ins_txt, (WIDTH // 2 - ins_txt.get_width() // 2, 233))
 
-        pygame.draw.arc(surface, GOLD_TEXT, (100, 160, 750, 180), math.radians(195), math.radians(345), 2)
+        pygame.draw.arc(surface, GOLD_TEXT, (100, 140, 750, 220), math.radians(195), math.radians(345), 2)
 
         for i, rect in enumerate(betting_spots):
             color = GOLD_TEXT if i == 2 else GOLD_SHADOW
@@ -464,14 +464,14 @@ async def run_blackjack(balance):
                 surface.blit(lbl, (rect.centerx - lbl.get_width() // 2, rect.centery - lbl.get_height() // 2))
 
     def draw_dealer_chip_rack(surface):
-        rack_rect = pygame.Rect(336, 10, 278, 34)
+        rack_rect = pygame.Rect(WIDTH // 2 - 139, 10, 278, 34)
         pygame.draw.rect(surface, WOOD_LIGHT, rack_rect, 0, 4)
         pygame.draw.rect(surface, VINTAGE_GOLD, rack_rect, 2, 4)
 
         rack_colors = [(240, 240, 240), (180, 30, 30), (30, 80, 180), (30, 130, 60), (40, 40, 40)]
 
         for i, col in enumerate(rack_colors):
-            slot_x = 344 + (i * 52)
+            slot_x = (WIDTH // 2 - 131) + (i * 52)
             pygame.draw.rect(surface, CHARCOAL, (slot_x, 14, 44, 26), 0, 3)
             for c in range(6):
                 pygame.draw.ellipse(surface, col, (slot_x + (c * 6), 16, 10, 22))
@@ -496,8 +496,8 @@ async def run_blackjack(balance):
             if len(deck) < 15:
                 deck = create_deck()
             idx = len(dealer_hand)
-            target_x = 380 + (idx * 85)
-            dealer_hand.append(AnimatedCard(deck.pop(), target_x, 60))
+            target_x = 350 + (idx * 85)
+            dealer_hand.append(AnimatedCard(deck.pop(), target_x, 55))
             dealer_timer = current_time
         else:
             p_val = calculate_hand_value(player_hand)
@@ -556,12 +556,12 @@ async def run_blackjack(balance):
                                 deck = create_deck()
 
                             player_hand = [
-                                AnimatedCard(deck.pop(), 380, 320),
-                                AnimatedCard(deck.pop(), 465, 320),
+                                AnimatedCard(deck.pop(), 350, 275),
+                                AnimatedCard(deck.pop(), 435, 275),
                             ]
                             dealer_hand = [
-                                AnimatedCard(deck.pop(), 380, 60),
-                                AnimatedCard(deck.pop(), 465, 60, facedown=True),
+                                AnimatedCard(deck.pop(), 350, 55),
+                                AnimatedCard(deck.pop(), 435, 55, facedown=True),
                             ]
 
                             p_val = calculate_hand_value(player_hand)
@@ -585,8 +585,8 @@ async def run_blackjack(balance):
                         if len(deck) < 15:
                             deck = create_deck()
                         idx = len(player_hand)
-                        target_x = 380 + (idx * 85)
-                        player_hand.append(AnimatedCard(deck.pop(), target_x, 320))
+                        target_x = 350 + (idx * 85)
+                        player_hand.append(AnimatedCard(deck.pop(), target_x, 275))
 
                         p_val = calculate_hand_value(player_hand)
 
@@ -615,8 +615,8 @@ async def run_blackjack(balance):
                             deck = create_deck()
 
                         idx = len(player_hand)
-                        target_x = 380 + (idx * 85)
-                        player_hand.append(AnimatedCard(deck.pop(), target_x, 320))
+                        target_x = 350 + (idx * 85)
+                        player_hand.append(AnimatedCard(deck.pop(), target_x, 275))
 
                         p_val = calculate_hand_value(player_hand)
 
@@ -650,9 +650,10 @@ async def run_blackjack(balance):
 
         screen.fill(MAHOGANY)
 
-        pygame.draw.ellipse(screen, LEATHER_RAIL, (-100, -200, WIDTH + 200, HEIGHT + 650))
-        pygame.draw.ellipse(screen, WOOD_LIGHT, (-80, -180, WIDTH + 160, HEIGHT + 610))
-        pygame.draw.ellipse(screen, FELT_GREEN, (-60, -160, WIDTH + 120, HEIGHT + 570))
+        # Centered Felt Oval boundaries inside 950x720
+        pygame.draw.ellipse(screen, LEATHER_RAIL, (-60, -180, WIDTH + 120, HEIGHT + 600))
+        pygame.draw.ellipse(screen, WOOD_LIGHT, (-45, -165, WIDTH + 90, HEIGHT + 570))
+        pygame.draw.ellipse(screen, FELT_GREEN, (-30, -150, WIDTH + 60, HEIGHT + 540))
 
         draw_table_stencils(screen)
         draw_dealer_chip_rack(screen)
@@ -662,7 +663,7 @@ async def run_blackjack(balance):
 
         # Dealer Hand Area
         d_lbl = label_font.render("DEALER", True, VINTAGE_GOLD)
-        screen.blit(d_lbl, (290, 65))
+        screen.blit(d_lbl, (260, 60))
 
         if (
             game_stage in ["RESOLVED", "DEALER_TURN"]
@@ -670,18 +671,18 @@ async def run_blackjack(balance):
             and not dealer_hand[1].facedown
         ):
             d_val_txt = label_font.render(f"Score: {calculate_hand_value(dealer_hand)}", True, CREAM_WHITE)
-            screen.blit(d_val_txt, (290, 85))
+            screen.blit(d_val_txt, (260, 80))
 
         for card in dealer_hand:
             draw_card(screen, card, card_num_font)
 
         # Player Hand Area
         p_lbl = label_font.render("PLAYER", True, VINTAGE_GOLD)
-        screen.blit(p_lbl, (290, 325))
+        screen.blit(p_lbl, (260, 280))
 
         if len(player_hand) > 0:
             p_val_txt = label_font.render(f"Score: {calculate_hand_value(player_hand)}", True, CREAM_WHITE)
-            screen.blit(p_val_txt, (290, 345))
+            screen.blit(p_val_txt, (260, 300))
 
         for card in player_hand:
             draw_card(screen, card, card_num_font)
@@ -694,15 +695,15 @@ async def run_blackjack(balance):
                 draw_chip_stack(screen, deal_box_rect, current_bet)
 
         # UI Control Panels
-        bank_rect = pygame.Rect(25, 550, 180, 55)
+        bank_rect = pygame.Rect(110, 512, 160, 55)
         draw_wood_panel(screen, bank_rect)
 
         bal_txt = ui_font.render(f"BANK: ${balance}", True, CREAM_WHITE)
         chip_txt = label_font.render(f"CHIP: ${active_chip_wager}", True, VINTAGE_GOLD)
-        screen.blit(bal_txt, (35, 555))
-        screen.blit(chip_txt, (35, 578))
+        screen.blit(bal_txt, (120, 517))
+        screen.blit(chip_txt, (120, 540))
 
-        chip_panel_rect = pygame.Rect(578, 550, 205, 55)
+        chip_panel_rect = pygame.Rect(638, 512, 205, 55)
         draw_wood_panel(screen, chip_panel_rect)
 
         for val, rect, col_bg, col_str in chip_selections:
@@ -761,8 +762,8 @@ async def run_blackjack(balance):
                 b_txt = label_font.render(label, True, CHROME_SHADOW)
                 screen.blit(b_txt, (btn_rect.centerx - b_txt.get_width() // 2, btn_rect.centery - b_txt.get_height() // 2))
 
-        # Bottom Banner Area
-        banner_rect = pygame.Rect(25, 630, 830, 45)
+        # Bottom Banner Area (Centering adjusted inside 950px frame)
+        banner_rect = pygame.Rect(60, 585, 830, 45)
         draw_wood_panel(screen, banner_rect)
 
         msg_color = (
@@ -773,10 +774,10 @@ async def run_blackjack(balance):
             else CREAM_WHITE
         )
         msg_surf = ui_font.render(win_message, True, msg_color)
-        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 642))
+        screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 597))
 
         _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
-        screen.blit(_hint_surf, (10, HEIGHT - 20))
+        screen.blit(_hint_surf, (15, HEIGHT - 25))
 
         pygame.display.flip()
         clock.tick(60)
