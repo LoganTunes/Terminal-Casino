@@ -69,7 +69,8 @@ def load_balance():
         if os.path.exists(SAVE_FILE):
             with open(SAVE_FILE, "r") as f:
                 data = json.load(f)
-                return int(data.get("balance", STARTING_BALANCE))
+                val = int(data.get("balance", STARTING_BALANCE))
+                return val if val > 0 else STARTING_BALANCE
     except Exception as e:
         print("Could not load save file:", e)
     return STARTING_BALANCE
@@ -110,9 +111,6 @@ from games import (
     ultimate_hold_em,
     video_poker,
 )
-
-screen = pygame.display.set_mode((LOBBY_WIDTH, LOBBY_HEIGHT))
-pygame.display.set_caption("The Terminal Casino")
 
 # ----------------------------------------------------------------
 # Game catalog
@@ -341,55 +339,41 @@ async def main():
                     balance = STARTING_BALANCE
                     save_balance(balance)
                 elif hover_idx is not None:
-                    # Call the game's run function safely. Games may be synchronous,
-                    # return a coroutine, raise SystemExit (via sys.exit()), or
-                    # return unexpected values. We handle all those cases so the
-                    # lobby doesn't crash when a game misbehaves.
                     game = GAMES[hover_idx]
                     result = None
                     try:
                         result = game["run"](balance)
 
-                        # If the game returned a coroutine (async function), await it.
                         if asyncio.iscoroutine(result):
                             try:
                                 result = await result
                             except SystemExit:
-                                # Game called sys.exit() while running as a coroutine.
                                 traceback.print_exc()
                                 result = balance
                     except SystemExit:
-                        # Some games may call sys.exit() directly; catch it so the
-                        # lobby doesn't exit entirely.
                         traceback.print_exc()
                         result = balance
                     except Exception:
-                        # Print the traceback (useful for debugging) but keep the
-                        # lobby alive and preserve the previous balance.
                         traceback.print_exc()
                         result = balance
 
-                    # Normalize the returned result into a valid integer balance.
-                    if result is None:
-                        balance = 0
-                    else:
+                    # FIXED: Retain balance when game returns None
+                    if result is not None:
                         try:
                             balance = int(result)
                         except Exception:
-                            # If the game returns something unexpected, preserve the
-                            # previous balance instead of crashing.
                             print(
                                 "Warning: game returned non-numeric balance, preserving previous balance."
                             )
-                            balance = max(0, balance)
+                    else:
+                        print("Game returned None; preserving existing bankroll.")
 
+                    balance = max(0, balance)
                     save_balance(balance)
                     restore_lobby_window()
 
         draw_lobby(balance, hover_idx)
         clock.tick(60)
-
-        # Essential for WebAssembly execution context
         await asyncio.sleep(0)
 
 
