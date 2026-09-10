@@ -1,4 +1,3 @@
-
 import asyncio
 import array
 import math
@@ -7,7 +6,7 @@ import sys
 import pygame
 
 # ============================================================
-#            CASINO MATH ENGINE & GAME LOGIC
+#             CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 SUITS = ["♥", "♦", "♣", "♠"]
@@ -47,7 +46,7 @@ def calculate_hand_value(hand):
 
 
 # ============================================================
-#                PYGAME & DISPLAY GLOBALS
+#                 PYGAME & DISPLAY GLOBALS
 # ============================================================
 
 WIDTH, HEIGHT = 950, 720
@@ -65,7 +64,7 @@ SUIT_ICONS_16 = {}
 
 
 # ============================================================
-#              REALISTIC CASINO AUDIO SYNTH ENGINE
+#               REALISTIC CASINO AUDIO SYNTH ENGINE
 # ============================================================
 
 class DummySound:
@@ -151,7 +150,7 @@ def create_loss_sound():
 
 
 # ============================================================
-#                        COLOR PALETTE
+#                         COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (12, 82, 42)
@@ -216,10 +215,10 @@ def create_flat_suit_icon(suit_type, size=32):
         pygame.draw.polygon(surf_high, color, pts)
 
         stem = [
-            (center - high_res * 0.06, center),
-            (center + high_res * 0.06, center),
-            (center + high_res * 0.22, high_res * 0.92),
-            (center - high_res * 0.22, high_res * 0.92),
+            (center - high_res * 0.04, center),
+            (center + high_res * 0.04, center),
+            (center + high_res * 0.10, high_res * 0.90),
+            (center - high_res * 0.10, high_res * 0.90),
         ]
         pygame.draw.polygon(surf_high, color, stem)
 
@@ -231,10 +230,10 @@ def create_flat_suit_icon(suit_type, size=32):
         pygame.draw.circle(surf_high, color, (int(center), int(high_res * 0.48)), int(r * 0.8))
 
         stem = [
-            (center - high_res * 0.06, center),
-            (center + high_res * 0.06, center),
-            (center + high_res * 0.22, high_res * 0.92),
-            (center - high_res * 0.22, high_res * 0.92),
+            (center - high_res * 0.04, center),
+            (center + high_res * 0.04, center),
+            (center + high_res * 0.10, high_res * 0.90),
+            (center - high_res * 0.10, high_res * 0.90),
         ]
         pygame.draw.polygon(surf_high, color, stem)
 
@@ -250,7 +249,7 @@ def init_suit_icons():
 
 
 # ============================================================
-#                     ANIMATED CARD CLASS
+#                      ANIMATED CARD CLASS
 # ============================================================
 
 DECK_SHOE_POS = (730, 25)
@@ -335,7 +334,7 @@ def draw_card(surface, card_obj, card_num_font):
 
 
 # ============================================================
-#                      FULL GAME ROUTINE
+#                    FULL GAME ROUTINE
 # ============================================================
 
 async def run_blackjack(balance):
@@ -399,9 +398,10 @@ async def run_blackjack(balance):
 
     deal_box_rect = betting_spots[2]
 
-    hit_btn_rect = pygame.Rect(290, 520, 110, 42)
-    stand_btn_rect = pygame.Rect(420, 520, 110, 42)
-    double_btn_rect = pygame.Rect(550, 520, 110, 42)
+    # Adjusted positions to clear chip_panel_rect (which starts at X=638)
+    hit_btn_rect = pygame.Rect(290, 520, 100, 42)
+    stand_btn_rect = pygame.Rect(400, 520, 100, 42)
+    double_btn_rect = pygame.Rect(510, 520, 100, 42)
 
     deal_trigger_rect = pygame.Rect(330, 520, 135, 42)
     clear_btn_rect = pygame.Rect(485, 520, 135, 42)
