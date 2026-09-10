@@ -125,7 +125,7 @@ def evaluate_best_5_card_hand(seven_cards):
     return best_rank_idx, best_rank_name, best_tie_breaker
 
 # ============================================================
-#        VECTOR SUIT DRAWING HELPER
+#        CLASSIC ANGLO-AMERICAN VECTOR SUIT RENDERER
 # ============================================================
 
 def draw_vector_suit(surface, suit_str, center_x, center_y, size, color):
@@ -133,38 +133,62 @@ def draw_vector_suit(surface, suit_str, center_x, center_y, size, color):
     r = size / 2.0
 
     if suit_str == "♦":  # Diamond
-        points = [(cx, cy - r), (cx + r * 0.8, cy), (cx, cy + r), (cx - r * 0.8, cy)]
+        points = [
+            (cx, cy - r * 1.1),
+            (cx + r * 0.75, cy),
+            (cx, cy + r * 1.1),
+            (cx - r * 0.75, cy)
+        ]
         pygame.draw.polygon(surface, color, points)
 
     elif suit_str == "♥":  # Heart
         points = []
-        for t in [i * 0.05 for i in range(126)]:
-            angle = t * math.pi
-            x = 16 * (math.sin(angle) ** 3)
-            y = -(13 * math.cos(angle) - 5 * math.cos(2 * angle) - 2 * math.cos(3 * angle) - math.cos(4 * angle))
-            points.append((cx + (x / 17.0) * r, cy + (y / 17.0) * r))
+        steps = 100
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
+            y = -(13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t))
+            points.append((cx + (x / 17.5) * r, cy + (y / 17.5) * r + (r * 0.1)))
         pygame.draw.polygon(surface, color, points)
 
     elif suit_str == "♠":  # Spade
         points = []
-        for t in [i * 0.05 for i in range(126)]:
-            angle = t * math.pi
-            x = 16 * (math.sin(angle) ** 3)
-            y = (13 * math.cos(angle) - 5 * math.cos(2 * angle) - 2 * math.cos(3 * angle) - math.cos(4 * angle))
-            points.append((cx + (x / 17.0) * r, cy + (y / 17.0) * r - r * 0.1))
+        steps = 100
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
+            y = (13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t))
+            points.append((cx + (x / 17.5) * r, cy + (y / 17.5) * r - (r * 0.25)))
         pygame.draw.polygon(surface, color, points)
-        # Base stem
-        stem_rect = pygame.Rect(cx - r * 0.15, cy, r * 0.3, r * 0.95)
-        pygame.draw.rect(surface, color, stem_rect)
+        
+        # Flared Base Stem
+        stem_points = [
+            (cx, cy - r * 0.1),
+            (cx + r * 0.12, cy + r * 0.3),
+            (cx + r * 0.45, cy + r * 0.85),
+            (cx - r * 0.45, cy + r * 0.85),
+            (cx - r * 0.12, cy + r * 0.3)
+        ]
+        pygame.draw.polygon(surface, color, stem_points)
 
     elif suit_str == "♣":  # Club
         leaf_r = r * 0.42
-        pygame.draw.circle(surface, color, (int(cx), int(cy - r * 0.35)), int(leaf_r))
-        pygame.draw.circle(surface, color, (int(cx - r * 0.4), int(cy + r * 0.15)), int(leaf_r))
-        pygame.draw.circle(surface, color, (int(cx + r * 0.4), int(cy + r * 0.15)), int(leaf_r))
-        # Base stem
-        stem_rect = pygame.Rect(cx - r * 0.15, cy, r * 0.3, r * 0.9)
-        pygame.draw.rect(surface, color, stem_rect)
+        # Top Leaf
+        pygame.draw.circle(surface, color, (int(cx), int(cy - r * 0.38)), int(leaf_r))
+        # Bottom-Left Leaf
+        pygame.draw.circle(surface, color, (int(cx - r * 0.38), int(cy + r * 0.08)), int(leaf_r))
+        # Bottom-Right Leaf
+        pygame.draw.circle(surface, color, (int(cx + r * 0.38), int(cy + r * 0.08)), int(leaf_r))
+        
+        # Flared Base Stem
+        stem_points = [
+            (cx, cy - r * 0.1),
+            (cx + r * 0.1, cy + r * 0.2),
+            (cx + r * 0.45, cy + r * 0.85),
+            (cx - r * 0.45, cy + r * 0.85),
+            (cx - r * 0.1, cy + r * 0.2)
+        ]
+        pygame.draw.polygon(surface, color, stem_points)
 
 # ============================================================
 #        REFACTORED WIDGET ENGINE & STATE DISPATCHER
@@ -209,7 +233,7 @@ class CardAnimation:
         self.to_facedown = to_facedown
         self.is_flip_only = is_flip_only
         self.progress = 0.0
-        self.speed = 0.12  # Smooth animation speed
+        self.speed = 0.12
 
     def update(self):
         self.progress += self.speed
@@ -292,7 +316,7 @@ VINTAGE_GOLD = (212, 163, 89)
 GOLD_SHADOW = (145, 105, 45)
 CREAM_WHITE = (247, 245, 230)
 CHARCOAL = (24, 24, 24)
-BRIGHT_RED = (190, 25, 25)
+BRIGHT_RED = (205, 20, 20)
 
 ui_font = pygame.font.SysFont("arial", 18, bold=True)  
 label_font = pygame.font.SysFont("arial", 14, bold=True)
@@ -315,7 +339,7 @@ def draw_card(surface, rect, card, facedown=False):
         
         # Center Vector Suit
         draw_vector_suit(surface, suit, rect.centerx, rect.centery + 10, 28, txt_color)
-        # Small Corner Vector Suit
+        # Corner Vector Suit
         draw_vector_suit(surface, suit, rect.x + 14 + num_surf.get_width(), rect.y + 14, 12, txt_color)
 
 def draw_card_scaled(surface, rect, card, facedown=False):
@@ -566,7 +590,6 @@ async def run_ultimate_hold_em(balance):
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Handle widget buttons first and short-circuit event propagation if handled
                 handled = (
                     action_widget.handle_event(event) or
                     clear_widget.handle_event(event) or
