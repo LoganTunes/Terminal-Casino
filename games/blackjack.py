@@ -6,7 +6,7 @@ import sys
 import pygame
 
 # ============================================================
-#         CASINO MATH ENGINE & GAME LOGIC
+#           CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 SUITS = ["♥", "♦", "♣", "♠"]
@@ -46,19 +46,21 @@ def calculate_hand_value(hand):
 
 
 # ============================================================
-#              PYGAME VISUAL ENGINE INITIALIZATION
+#               PYGAME & DISPLAY GLOBALS
 # ============================================================
-
-pygame.init()
 
 WIDTH, HEIGHT = 950, 720
 _GAME_TITLE = "Classic Vegas Blackjack"
 
-# Sound globals
+# Audio Globals
 snd_card_slide = None
 snd_chip = None
 snd_win = None
 snd_lose = None
+
+# Vector Suit Icon Caches (Deferred load to prevent WebAssembly boot freezes)
+SUIT_ICONS_32 = {}
+SUIT_ICONS_16 = {}
 
 
 # ============================================================
@@ -148,7 +150,7 @@ def create_loss_sound():
 
 
 # ============================================================
-#                       COLOR PALETTE
+#                        COLOR PALETTE
 # ============================================================
 
 FELT_GREEN = (12, 82, 42)
@@ -167,14 +169,10 @@ BRIGHT_RED = (190, 25, 25)
 
 
 # ============================================================
-#         MATHEMATICALLY ACCURATE VECTOR SUIT GENERATOR
+#          MATHEMATICALLY ACCURATE VECTOR SUIT GENERATOR
 # ============================================================
 
 def create_flat_suit_icon(suit_type, size=32):
-    """
-    Generates exact Anglo-American card suits using high-resolution 
-    vector math curve sampling for smooth, non-deformed silhouettes.
-    """
     scale = 4
     high_res = size * scale
     surf_high = pygame.Surface((high_res, high_res), pygame.SRCALPHA)
@@ -242,9 +240,12 @@ def create_flat_suit_icon(suit_type, size=32):
     return pygame.transform.smoothscale(surf_high, (size, size))
 
 
-# Cache flat rendered suits
-SUIT_ICONS_32 = {s: create_flat_suit_icon(s, 32) for s in SUITS}
-SUIT_ICONS_16 = {s: create_flat_suit_icon(s, 16) for s in SUITS}
+def init_suit_icons():
+    """Deferred suit generator: avoids executing before screen binding."""
+    global SUIT_ICONS_32, SUIT_ICONS_16
+    if not SUIT_ICONS_32:
+        SUIT_ICONS_32 = {s: create_flat_suit_icon(s, 32) for s in SUITS}
+        SUIT_ICONS_16 = {s: create_flat_suit_icon(s, 16) for s in SUITS}
 
 
 # ============================================================
@@ -307,15 +308,12 @@ def draw_card_surface(card_data, card_num_font, facedown=False, flip_scale=1.0):
         txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
 
         if abs(flip_scale) > 0.35:
-            # Corner Rank
             num_surf = card_num_font.render(rank, True, txt_color)
             surf.blit(num_surf, (5, 3))
 
-            # Corner Small Suit
             s_icon_small = SUIT_ICONS_16[suit]
             surf.blit(s_icon_small, (6, 24))
 
-            # Main Center Flat Suit
             s_icon = SUIT_ICONS_32[suit]
             surf.blit(s_icon, (width // 2 - 16, height // 2 - 10))
 
@@ -352,7 +350,6 @@ async def run_blackjack(balance):
 
     clock = pygame.time.Clock()
 
-    # --- CLEAN NON-OVERLAPPING FONTS ---
     ui_font = pygame.font.SysFont("arial", 18, bold=True)
     label_font = pygame.font.SysFont("arial", 14, bold=True)
     stencil_large = pygame.font.SysFont("georgia", 16, bold=True)
@@ -388,7 +385,6 @@ async def run_blackjack(balance):
     dealer_timer = 0
     DEALER_DRAW_DELAY = 900
 
-    # PERFECTLY CENTERED BOUNDARIES FOR 950x720
     betting_spots = [
         pygame.Rect(185, 420, 60, 60),
         pygame.Rect(315, 430, 60, 60),
@@ -399,7 +395,6 @@ async def run_blackjack(balance):
 
     deal_box_rect = betting_spots[2]
 
-    # Control Buttons
     hit_btn_rect = pygame.Rect(290, 520, 110, 42)
     stand_btn_rect = pygame.Rect(420, 520, 110, 42)
     double_btn_rect = pygame.Rect(550, 520, 110, 42)
@@ -650,7 +645,6 @@ async def run_blackjack(balance):
 
         screen.fill(MAHOGANY)
 
-        # Centered Felt Oval boundaries inside 950x720
         pygame.draw.ellipse(screen, LEATHER_RAIL, (-60, -180, WIDTH + 120, HEIGHT + 600))
         pygame.draw.ellipse(screen, WOOD_LIGHT, (-45, -165, WIDTH + 90, HEIGHT + 570))
         pygame.draw.ellipse(screen, FELT_GREEN, (-30, -150, WIDTH + 60, HEIGHT + 540))
@@ -661,7 +655,6 @@ async def run_blackjack(balance):
         pygame.draw.rect(screen, CHARCOAL, (DECK_SHOE_POS[0], DECK_SHOE_POS[1], 75, 105), 0, 5)
         pygame.draw.rect(screen, VINTAGE_GOLD, (DECK_SHOE_POS[0] + 4, DECK_SHOE_POS[1] + 4, 67, 97), 2, 4)
 
-        # Dealer Hand Area
         d_lbl = label_font.render("DEALER", True, VINTAGE_GOLD)
         screen.blit(d_lbl, (260, 60))
 
@@ -676,7 +669,6 @@ async def run_blackjack(balance):
         for card in dealer_hand:
             draw_card(screen, card, card_num_font)
 
-        # Player Hand Area
         p_lbl = label_font.render("PLAYER", True, VINTAGE_GOLD)
         screen.blit(p_lbl, (260, 280))
 
@@ -694,7 +686,6 @@ async def run_blackjack(balance):
             else:
                 draw_chip_stack(screen, deal_box_rect, current_bet)
 
-        # UI Control Panels
         bank_rect = pygame.Rect(110, 512, 160, 55)
         draw_wood_panel(screen, bank_rect)
 
@@ -762,7 +753,6 @@ async def run_blackjack(balance):
                 b_txt = label_font.render(label, True, CHROME_SHADOW)
                 screen.blit(b_txt, (btn_rect.centerx - b_txt.get_width() // 2, btn_rect.centery - b_txt.get_height() // 2))
 
-        # Bottom Banner Area (Centering adjusted inside 950px frame)
         banner_rect = pygame.Rect(60, 585, 830, 45)
         draw_wood_panel(screen, banner_rect)
 
@@ -787,14 +777,23 @@ async def run_blackjack(balance):
 
 
 # ============================================================
-#                      MAIN LOBBY ENTRY POINT
+#                  MAIN LOBBY ENTRY POINT
 # ============================================================
 
 async def main():
+    pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("The Terminal Casino")
-    bankroll = 1000
 
+    # Force immediate frame 0 render so Pybag binds the browser canvas
+    screen.fill((12, 82, 42))
+    pygame.display.flip()
+    await asyncio.sleep(0)
+
+    # Safely generate suit vectors AFTER screen display is active
+    init_suit_icons()
+
+    bankroll = 1000
     bj_btn_rect = pygame.Rect(40, 140, 200, 150)
     font = pygame.font.SysFont("arial", 22, bold=True)
 
