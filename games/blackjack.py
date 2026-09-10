@@ -1,3 +1,4 @@
+
 import asyncio
 import array
 import math
@@ -6,7 +7,7 @@ import sys
 import pygame
 
 # ============================================================
-#           CASINO MATH ENGINE & GAME LOGIC
+#            CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 SUITS = ["♥", "♦", "♣", "♠"]
@@ -46,7 +47,7 @@ def calculate_hand_value(hand):
 
 
 # ============================================================
-#               PYGAME & DISPLAY GLOBALS
+#                PYGAME & DISPLAY GLOBALS
 # ============================================================
 
 WIDTH, HEIGHT = 950, 720
@@ -58,7 +59,7 @@ snd_chip = None
 snd_win = None
 snd_lose = None
 
-# Vector Suit Icon Caches (Deferred load to prevent WebAssembly boot freezes)
+# Vector Suit Icon Caches (Lazy loaded inside main/run_blackjack)
 SUIT_ICONS_32 = {}
 SUIT_ICONS_16 = {}
 
@@ -241,7 +242,7 @@ def create_flat_suit_icon(suit_type, size=32):
 
 
 def init_suit_icons():
-    """Deferred suit generator: avoids executing before screen binding."""
+    """Deferred suit generator: avoids executing before display surface init."""
     global SUIT_ICONS_32, SUIT_ICONS_16
     if not SUIT_ICONS_32:
         SUIT_ICONS_32 = {s: create_flat_suit_icon(s, 32) for s in SUITS}
@@ -249,7 +250,7 @@ def init_suit_icons():
 
 
 # ============================================================
-#                    ANIMATED CARD CLASS
+#                     ANIMATED CARD CLASS
 # ============================================================
 
 DECK_SHOE_POS = (730, 25)
@@ -348,15 +349,18 @@ async def run_blackjack(balance):
     pygame.display.flip()
     await asyncio.sleep(0)
 
+    # Ensure vector suit cache is ready
+    init_suit_icons()
+
     clock = pygame.time.Clock()
 
-    ui_font = pygame.font.SysFont("arial", 18, bold=True)
-    label_font = pygame.font.SysFont("arial", 14, bold=True)
-    stencil_large = pygame.font.SysFont("georgia", 16, bold=True)
-    stencil_small = pygame.font.SysFont("georgia", 11, bold=True)
-    card_num_font = pygame.font.SysFont("arial", 18, bold=True)
-    chip_num_font = pygame.font.SysFont("arial", 10, bold=True)
-    _lobby_hint_font = pygame.font.SysFont("arial", 12, bold=True)
+    ui_font = pygame.font.Font(None, 24)
+    label_font = pygame.font.Font(None, 18)
+    stencil_large = pygame.font.Font(None, 22)
+    stencil_small = pygame.font.Font(None, 16)
+    card_num_font = pygame.font.Font(None, 22)
+    chip_num_font = pygame.font.Font(None, 14)
+    _lobby_hint_font = pygame.font.Font(None, 16)
 
     if snd_card_slide is None:
         try:
@@ -777,7 +781,7 @@ async def run_blackjack(balance):
 
 
 # ============================================================
-#                  MAIN LOBBY ENTRY POINT
+#                 MAIN LOBBY ENTRY POINT
 # ============================================================
 
 async def main():
@@ -795,7 +799,7 @@ async def main():
 
     bankroll = 1000
     bj_btn_rect = pygame.Rect(40, 140, 200, 150)
-    font = pygame.font.SysFont("arial", 22, bold=True)
+    font = pygame.font.Font(None, 24)
 
     while True:
         screen.fill((12, 82, 42))
