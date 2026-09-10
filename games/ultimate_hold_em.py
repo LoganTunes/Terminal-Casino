@@ -125,114 +125,70 @@ def evaluate_best_5_card_hand(seven_cards):
     return best_rank_idx, best_rank_name, best_tie_breaker
 
 # ============================================================
-#       FIXED INTEGRATED PRECISION VECTOR RENDERERS
+#        CLASSIC ANGLO-AMERICAN VECTOR SUIT RENDERER
 # ============================================================
 
-def draw_diamond_vec(surface, color, x, y, size):
-    x, y = int(x), int(y)
-    half_w = int(size * 0.38)
-    half_h = int(size * 0.52)
-    points = [
-        (x, y - half_h),
-        (x + half_w, y),
-        (x, y + half_h),
-        (x - half_w, y)
-    ]
-    pygame.draw.polygon(surface, color, points)
+def draw_vector_suit(surface, suit_str, center_x, center_y, size, color):
+    cx, cy = center_x, center_y
+    r = size / 2.0
 
-def draw_heart_vec(surface, color, x, y, size):
-    x, y = int(x), int(y)
-    points = []
-    steps = 60
-    scale = size * 0.44
-    for i in range(steps + 1):
-        t = math.pi * 2 * i / steps
-        dx = 16 * (math.sin(t) ** 3)
-        dy = -(13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t))
-        px = x + int(dx * scale / 16)
-        py = y + int((dy - 1.5) * scale / 16)
-        points.append((px, py))
-    pygame.draw.polygon(surface, color, points)
+    if suit_str == "♦":  # Diamond
+        points = [
+            (cx, cy - r * 1.1),
+            (cx + r * 0.75, cy),
+            (cx, cy + r * 1.1),
+            (cx - r * 0.75, cy)
+        ]
+        pygame.draw.polygon(surface, color, points)
 
-def draw_spade_vec(surface, color, x, y, size):
-    x, y = int(x), int(y)
-    points = []
-    steps = 60
-    scale = size * 0.41
-    for i in range(steps + 1):
-        t = math.pi * 2 * i / steps
-        dx = 16 * (math.sin(t) ** 3)
-        dy = (13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t))
-        px = x + int(dx * scale / 16)
-        py = y + int((dy - 2.5) * scale / 16)
-        points.append((px, py))
-    pygame.draw.polygon(surface, color, points)
-    
-    stem_points = []
-    stem_height = int(size * 0.35)
-    stem_top_y = y + int(size * 0.05)
-    
-    for i in range(11):
-        pct = i / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x - int((size * 0.03) + (size * 0.15) * (pct ** 2.5))
-        stem_points.append((int(curr_x), int(curr_y)))
-        
-    for i in range(11):
-        pct = (10 - i) / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x + int((size * 0.03) + (size * 0.15) * (pct ** 2.5))
-        stem_points.append((int(curr_x), int(curr_y)))
-        
-    pygame.draw.polygon(surface, color, stem_points)
+    elif suit_str == "♥":  # Heart
+        points = []
+        steps = 100
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
+            y = -(13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t))
+            points.append((cx + (x / 17.5) * r, cy + (y / 17.5) * r + (r * 0.1)))
+        pygame.draw.polygon(surface, color, points)
 
-def draw_club_vec(surface, color, x, y, size):
-    x, y = int(x), int(y)
-    r = max(1, int(size * 0.23))
-    dist = int(size * 0.21)
-    
-    pygame.draw.circle(surface, color, (x, y - dist), r)
-    pygame.draw.circle(surface, color, (x - dist, y + int(size * 0.06)), r)
-    pygame.draw.circle(surface, color, (x + dist, y + int(size * 0.06)), r)
-    
-    center_poly = [
-        (x, y - dist),
-        (x + dist, y + int(size * 0.06)),
-        (x, y + int(size * 0.15)),
-        (x - dist, y + int(size * 0.06))
-    ]
-    pygame.draw.polygon(surface, color, center_poly)
-    
-    stem_points = []
-    stem_height = int(size * 0.32)
-    stem_top_y = y + int(size * 0.08)
-    
-    for i in range(11):
-        pct = i / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x - int((size * 0.02) + (size * 0.14) * (pct ** 2.5))
-        stem_points.append((int(curr_x), int(curr_y)))
+    elif suit_str == "♠":  # Spade
+        points = []
+        steps = 100
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
+            y = (13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t))
+            points.append((cx + (x / 17.5) * r, cy + (y / 17.5) * r - (r * 0.25)))
+        pygame.draw.polygon(surface, color, points)
         
-    for i in range(11):
-        pct = (10 - i) / 10.0
-        curr_y = stem_top_y + (stem_height * pct)
-        curr_x = x + int((size * 0.02) + (size * 0.14) * (pct ** 2.5))
-        stem_points.append((int(curr_x), int(curr_y)))
-        
-    pygame.draw.polygon(surface, color, stem_points)
+        # Flared Base Stem
+        stem_points = [
+            (cx, cy - r * 0.1),
+            (cx + r * 0.12, cy + r * 0.3),
+            (cx + r * 0.45, cy + r * 0.85),
+            (cx - r * 0.45, cy + r * 0.85),
+            (cx - r * 0.12, cy + r * 0.3)
+        ]
+        pygame.draw.polygon(surface, color, stem_points)
 
-def render_custom_suit(surface, suit_str, x, y, size, color):
-    """Safely routed custom suit drawer without namespace collisions."""
-    if size < 4:
-        return
-    if suit_str == "♦":
-        draw_diamond_vec(surface, color, x, y, size)
-    elif suit_str == "♥":
-        draw_heart_vec(surface, color, x, y, size)
-    elif suit_str == "♠":
-        draw_spade_vec(surface, color, x, y, size)
-    elif suit_str == "♣":
-        draw_club_vec(surface, color, x, y, size)
+    elif suit_str == "♣":  # Club
+        leaf_r = r * 0.42
+        # Top Leaf
+        pygame.draw.circle(surface, color, (int(cx), int(cy - r * 0.38)), int(leaf_r))
+        # Bottom-Left Leaf
+        pygame.draw.circle(surface, color, (int(cx - r * 0.38), int(cy + r * 0.08)), int(leaf_r))
+        # Bottom-Right Leaf
+        pygame.draw.circle(surface, color, (int(cx + r * 0.38), int(cy + r * 0.08)), int(leaf_r))
+        
+        # Flared Base Stem
+        stem_points = [
+            (cx, cy - r * 0.1),
+            (cx + r * 0.1, cy + r * 0.2),
+            (cx + r * 0.45, cy + r * 0.85),
+            (cx - r * 0.45, cy + r * 0.85),
+            (cx - r * 0.1, cy + r * 0.2)
+        ]
+        pygame.draw.polygon(surface, color, stem_points)
 
 # ============================================================
 #        REFACTORED WIDGET ENGINE & STATE DISPATCHER
@@ -381,10 +337,10 @@ def draw_card(surface, rect, card, facedown=False):
         num_surf = card_num_font.render(rank, True, txt_color)
         surface.blit(num_surf, (rect.x + 6, rect.y + 4))
         
-        # Center Vector Suit Render
-        render_custom_suit(surface, suit, rect.centerx, rect.centery + 10, 32, txt_color)
-        # Corner Mini-Suit Render
-        render_custom_suit(surface, suit, rect.x + 14 + num_surf.get_width(), rect.y + 14, 14, txt_color)
+        # Center Vector Suit
+        draw_vector_suit(surface, suit, rect.centerx, rect.centery + 10, 28, txt_color)
+        # Corner Vector Suit
+        draw_vector_suit(surface, suit, rect.x + 14 + num_surf.get_width(), rect.y + 14, 12, txt_color)
 
 def draw_card_scaled(surface, rect, card, facedown=False):
     if rect.width < 4:
@@ -403,9 +359,9 @@ def draw_card_scaled(surface, rect, card, facedown=False):
             num_surf = card_num_font.render(rank, True, txt_color)
             surface.blit(num_surf, (rect.x + 4, rect.y + 2))
             
-            # Scaled Center Vector Suit
-            suit_size = int(32 * (rect.width / 80.0))
-            render_custom_suit(surface, suit, rect.centerx, rect.centery + 10, suit_size, txt_color)
+            # Vector Suit Center
+            suit_size = int(28 * (rect.width / 80.0))
+            draw_vector_suit(surface, suit, rect.centerx, rect.centery + 10, suit_size, txt_color)
 
 async def run_ultimate_hold_em(balance):
     global screen
