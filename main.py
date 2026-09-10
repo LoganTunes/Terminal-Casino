@@ -20,16 +20,8 @@ from games import (
     video_poker,
 )
 
-# Initialize Pygame Display
-pygame.init()
-if not pygame.mixer.get_init():
-    pygame.mixer.init(frequency=22050, size=-16, channels=1)
-
-# FIXED NATIVE RESOLUTION FOR ALL GAMES AND LOBBY
+# Constants
 WIDTH, HEIGHT = 950, 720
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("The Terminal Casino - Main Lobby")
-clock = pygame.time.Clock()
 
 # Color Palette
 MAHOGANY = (56, 18, 11)
@@ -40,20 +32,14 @@ CREAM_WHITE = (247, 245, 230)
 CHARCOAL = (24, 24, 24)
 BRIGHT_RED = (190, 25, 25)
 
-# Fonts
-title_font = pygame.font.SysFont("georgia", 36, bold=True)
-subtitle_font = pygame.font.SysFont("georgia", 18, italic=True)
-card_font = pygame.font.SysFont("arial", 16, bold=True)
-hud_font = pygame.font.SysFont("arial", 20, bold=True)
-
 
 class MenuButton:
-    def __init__(self, rect, title, game_key, callback):
+    def __init__(self, rect, title, game_key, card_font):
         self.rect = pygame.Rect(rect)
         self.title = title
         self.game_key = game_key
-        self.callback = callback
         self.hovered = False
+        self.card_font = card_font
 
     def draw(self, surface):
         bg_col = BRIGHT_RED if self.hovered else CHARCOAL
@@ -64,7 +50,7 @@ class MenuButton:
         pygame.draw.rect(surface, border_col, self.rect, 2, 8)
 
         # Title Label
-        txt = card_font.render(self.title, True, CREAM_WHITE)
+        txt = self.card_font.render(self.title, True, CREAM_WHITE)
         surface.blit(
             txt,
             (
@@ -83,7 +69,31 @@ class MenuButton:
 
 
 async def main():
-    global screen
+    pygame.init()
+
+    # Deferred safe mixer init
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init(frequency=22050, size=-16, channels=1)
+    except Exception as e:
+        print(f"[Mixer Warning] Bypassed audio init: {e}")
+
+    # Initialize Screen
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("The Terminal Casino - Main Lobby")
+    clock = pygame.time.Clock()
+
+    # Immediate forced canvas binding for WebAssembly/Pybag
+    screen.fill(MAHOGANY)
+    pygame.display.flip()
+    await asyncio.sleep(0)
+
+    # Initialize Fonts after display is live
+    title_font = pygame.font.SysFont("georgia", 36, bold=True)
+    subtitle_font = pygame.font.SysFont("georgia", 18, italic=True)
+    card_font = pygame.font.SysFont("arial", 16, bold=True)
+    hud_font = pygame.font.SysFont("arial", 20, bold=True)
+
     player_balance = 1000
 
     # Game Launcher Registry
@@ -98,27 +108,28 @@ async def main():
         "video_poker": video_poker.run_video_poker,
     }
 
-    # 2x4 Layout Grid Scaled to Fit 950x720 Cleanly
-    # Card size: 180x100 | Spacing: 25px horizontal, 25px vertical
+    # Layout Grid Settings
     start_x, start_y = 75, 220
     card_w, card_h = 180, 100
     gap_x, gap_y = 25, 25
 
     buttons = [
         # Row 1
-        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "BLACKJACK", "blackjack", None),
-        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "CRAPS", "craps", None),
-        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "KENO", "keno", None),
-        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "HORSE DERBY", "mechanical_derby", None),
+        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "BLACKJACK", "blackjack", card_font),
+        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "CRAPS", "craps", card_font),
+        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "KENO", "keno", card_font),
+        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 0 * (card_h + gap_y), card_w, card_h), "HORSE DERBY", "mechanical_derby", card_font),
         # Row 2
-        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "ROULETTE", "roulette", None),
-        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "SLOTS", "slots", None),
-        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "HOLD 'EM", "ultimate_hold_em", None),
-        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "VIDEO POKER", "video_poker", None),
+        MenuButton((start_x + 0 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "ROULETTE", "roulette", card_font),
+        MenuButton((start_x + 1 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "SLOTS", "slots", card_font),
+        MenuButton((start_x + 2 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "HOLD 'EM", "ultimate_hold_em", card_font),
+        MenuButton((start_x + 3 * (card_w + gap_x), start_y + 1 * (card_h + gap_y), card_w, card_h), "VIDEO POKER", "video_poker", card_font),
     ]
 
     running = True
     while running:
+        next_game = None
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -127,13 +138,17 @@ async def main():
 
             for btn in buttons:
                 launched_game = btn.handle_event(event)
-                if launched_game and launched_game in game_launchers:
-                    # Launch target game and retrieve balance upon returning
-                    player_balance = await game_launchers[launched_game](player_balance)
-                    
-                    # Force screen re-bind back to 950x720 upon returning to main menu
-                    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-                    pygame.display.set_caption("The Terminal Casino - Main Lobby")
+                if launched_game:
+                    next_game = launched_game
+
+        # Safe launch outside the event iteration loop
+        if next_game and next_game in game_launchers:
+            player_balance = await game_launchers[next_game](player_balance)
+            
+            # Re-bind screen and clear pending input states upon return
+            screen = pygame.display.set_mode((WIDTH, HEIGHT))
+            pygame.display.set_caption("The Terminal Casino - Main Lobby")
+            pygame.event.clear()
 
         # Render Main Lobby Scene
         screen.fill(MAHOGANY)
@@ -158,8 +173,8 @@ async def main():
             btn.draw(screen)
 
         pygame.display.flip()
-        await asyncio.sleep(0)
         clock.tick(60)
+        await asyncio.sleep(0)
 
 
 if __name__ == "__main__":
