@@ -1,4 +1,3 @@
-
 import array
 import asyncio
 import itertools
@@ -143,65 +142,104 @@ def evaluate_best_5_card_hand(seven_cards):
     return best_rank_idx, best_rank_name, best_tie_breaker
 # ============================================================
 # ENHANCED VECTOR SUIT DRAWING ENGINE (BLACKJACK GRADE)
+# Mathematically accurate, high-res supersampled + smoothscaled,
+# cached per (suit, size) -- identical technique to the Blackjack table.
 # ============================================================
-def draw_vector_suit(surface, suit_str, center_x, center_y, size, color):
-    cx, cy = center_x, center_y
-    r = size / 2.0
-    if suit_str == "♦":
-        points = [
-            (cx, cy - r * 1.05),
-            (cx + r * 0.85, cy),
-            (cx, cy + r * 1.05),
-            (cx - r * 0.85, cy)
+SUIT_ICON_CACHE = {}
+
+
+def create_flat_suit_icon(suit_type, size=32):
+    scale = 4
+    high_res = size * scale
+    surf_high = pygame.Surface((high_res, high_res), pygame.SRCALPHA)
+    color = BRIGHT_RED if suit_type in ["♥", "♦"] else CHARCOAL
+    center = high_res / 2
+
+    if suit_type == "♦":
+        pts = [
+            (center, high_res * 0.05),
+            (high_res * 0.88, center),
+            (center, high_res * 0.95),
+            (high_res * 0.12, center),
         ]
-        pygame.draw.polygon(surface, color, points)
-        # Subtle internal geometric highlight for depth
-        inner_pts = [
-            (cx, cy - r * 0.7),
-            (cx + r * 0.55, cy),
-            (cx, cy + r * 0.7),
-            (cx - r * 0.55, cy)
-        ]
-        pygame.draw.polygon(surface, (min(255, color[0] + 40), min(255, color[1] + 40), min(255, color[2] + 40)), inner_pts, 1)
-    elif suit_str == "♥":
-        points = []
-        for t in [i * 0.04 for i in range(151)]:
-            angle = t * math.pi
-            x = 16 * (math.sin(angle) ** 3)
+        pygame.draw.polygon(surf_high, color, pts)
+
+    elif suit_type == "♥":
+        pts = []
+        steps = 120
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
             y = -(
-                13 * math.cos(angle)
-                - 5 * math.cos(2 * angle)
-                - 2 * math.cos(3 * angle)
-                - math.cos(4 * angle)
+                13 * math.cos(t)
+                - 5 * math.cos(2 * t)
+                - 2 * math.cos(3 * t)
+                - math.cos(4 * t)
             )
-            points.append((cx + (x / 16.5) * r, cy + (y / 16.5) * r + r * 0.05))
-        pygame.draw.polygon(surface, color, points)
-    elif suit_str == "♠":
-        points = []
-        for t in [i * 0.04 for i in range(151)]:
-            angle = t * math.pi
-            x = 16 * (math.sin(angle) ** 3)
+            px = center + (x / 17.5) * (high_res * 0.45)
+            py = (center + 2) + (y / 17.5) * (high_res * 0.42)
+            pts.append((px, py))
+        pygame.draw.polygon(surf_high, color, pts)
+
+    elif suit_type == "♠":
+        pts = []
+        steps = 120
+        for i in range(steps):
+            t = (i / steps) * 2 * math.pi
+            x = 16 * (math.sin(t) ** 3)
             y = (
-                13 * math.cos(angle)
-                - 5 * math.cos(2 * angle)
-                - 2 * math.cos(3 * angle)
-                - math.cos(4 * angle)
+                13 * math.cos(t)
+                - 5 * math.cos(2 * t)
+                - 2 * math.cos(3 * t)
+                - math.cos(4 * t)
             )
-            points.append((cx + (x / 16.5) * r, cy + (y / 16.5) * r - r * 0.15))
-        pygame.draw.polygon(surface, color, points)
-        stem_rect = pygame.Rect(cx - r * 0.18, cy + r * 0.1, r * 0.36, r * 0.85)
-        pygame.draw.rect(surface, color, stem_rect, border_radius=2)
-        base_curve = [(cx - r * 0.45, cy + r * 0.95), (cx + r * 0.45, cy + r * 0.95), (cx, cy + r * 0.75)]
-        pygame.draw.polygon(surface, color, base_curve)
-    elif suit_str == "♣":
-        leaf_r = r * 0.42
-        pygame.draw.circle(surface, color, (int(cx), int(cy - r * 0.38)), int(leaf_r))
-        pygame.draw.circle(surface, color, (int(cx - r * 0.38), int(cy + r * 0.12)), int(leaf_r))
-        pygame.draw.circle(surface, color, (int(cx + r * 0.38), int(cy + r * 0.12)), int(leaf_r))
-        stem_rect = pygame.Rect(cx - r * 0.18, cy + r * 0.05, r * 0.36, r * 0.9)
-        pygame.draw.rect(surface, color, stem_rect, border_radius=2)
-        base_curve = [(cx - r * 0.45, cy + r * 0.95), (cx + r * 0.45, cy + r * 0.95), (cx, cy + r * 0.75)]
-        pygame.draw.polygon(surface, color, base_curve)
+            px = center + (x / 17.5) * (high_res * 0.42)
+            py = (center - high_res * 0.08) + (y / 17.5) * (high_res * 0.40)
+            pts.append((px, py))
+        pygame.draw.polygon(surf_high, color, pts)
+
+        stem = [
+            (center - high_res * 0.04, center),
+            (center + high_res * 0.04, center),
+            (center + high_res * 0.10, high_res * 0.90),
+            (center - high_res * 0.10, high_res * 0.90),
+        ]
+        pygame.draw.polygon(surf_high, color, stem)
+
+    elif suit_type == "♣":
+        r = high_res * 0.23
+        pygame.draw.circle(surf_high, color, (int(center), int(high_res * 0.32)), int(r))
+        pygame.draw.circle(surf_high, color, (int(high_res * 0.30), int(high_res * 0.52)), int(r))
+        pygame.draw.circle(surf_high, color, (int(high_res * 0.70), int(high_res * 0.52)), int(r))
+        pygame.draw.circle(surf_high, color, (int(center), int(high_res * 0.48)), int(r * 0.8))
+
+        stem = [
+            (center - high_res * 0.04, center),
+            (center + high_res * 0.04, center),
+            (center + high_res * 0.10, high_res * 0.90),
+            (center - high_res * 0.10, high_res * 0.90),
+        ]
+        pygame.draw.polygon(surf_high, color, stem)
+
+    return pygame.transform.smoothscale(surf_high, (size, size))
+
+
+def get_suit_icon(suit_type, size):
+    size = max(4, int(size))
+    key = (suit_type, size)
+    icon = SUIT_ICON_CACHE.get(key)
+    if icon is None:
+        icon = create_flat_suit_icon(suit_type, size)
+        SUIT_ICON_CACHE[key] = icon
+    return icon
+
+
+def blit_suit_icon(surface, suit_type, center_x, center_y, size):
+    icon = get_suit_icon(suit_type, size)
+    surface.blit(
+        icon,
+        (int(center_x - icon.get_width() / 2), int(center_y - icon.get_height() / 2)),
+    )
 # ============================================================
 # UI WIDGET ENGINE & STATE DISPATCHER
 # ============================================================
@@ -381,16 +419,13 @@ def draw_card(surface, rect, card, facedown=False):
         txt_color = BRIGHT_RED if suit in ["♥", "♦"] else CHARCOAL
         num_surf = card_num_font.render(rank, True, txt_color)
         surface.blit(num_surf, (rect.x + 6, rect.y + 4))
-        draw_vector_suit(
-            surface, suit, rect.centerx, rect.centery + 10, 28, txt_color
-        )
-        draw_vector_suit(
+        blit_suit_icon(surface, suit, rect.centerx, rect.centery + 10, 28)
+        blit_suit_icon(
             surface,
             suit,
             rect.x + 14 + num_surf.get_width(),
             rect.y + 14,
             12,
-            txt_color,
         )
 def draw_card_scaled(surface, rect, card, facedown=False):
     if rect.width < 4:
@@ -417,14 +452,7 @@ def draw_card_scaled(surface, rect, card, facedown=False):
             num_surf = card_num_font.render(rank, True, txt_color)
             surface.blit(num_surf, (rect.x + 4, rect.y + 2))
             suit_size = int(28 * (rect.width / 80.0))
-            draw_vector_suit(
-                surface,
-                suit,
-                rect.centerx,
-                rect.centery + 10,
-                suit_size,
-                txt_color,
-            )
+            blit_suit_icon(surface, suit, rect.centerx, rect.centery + 10, suit_size)
 async def run_ultimate_hold_em(balance):
     global screen
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
