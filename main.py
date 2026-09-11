@@ -271,7 +271,7 @@ def draw_lobby(balance, hover_idx):
     title_surf = title_font.render("THE TERMINAL CASINO", True, GOLD_TEXT)
     screen.blit(title_surf, (LOBBY_WIDTH // 2 - title_surf.get_width() // 2, 68))
     sub_surf = subtitle_font.render(
-        "Choose a table to play - your bankroll follows you everywhere",
+        "Eight classic casino games in one - Try your luck!",
         True,
         CREAM_WHITE,
     )
