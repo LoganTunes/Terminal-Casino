@@ -19,15 +19,15 @@ GRAPE = "GRAPE"
 ORANGE = "ORANGE"
 
 SLOT_SYMBOLS = [CHERRY, BELL, BAR, SEVEN, LEMON, GRAPE, ORANGE]
-SLOT_WEIGHTS = [15, 20, 15, 10, 8, 7, 5]
+SLOT_WEIGHTS = [10, 8, 5, 3, 12, 16, 22]
 
 TRIPLE_PAYOUTS = {
-    BELL: 10,
-    BAR: 20,
-    SEVEN: 30,
-    LEMON: 40,
-    GRAPE: 60,
-    ORANGE: 100,
+    BELL: 40,
+    BAR: 60,
+    SEVEN: 100,
+    LEMON: 20,
+    GRAPE: 15,
+    ORANGE: 10,
 }
 
 CHERRY_PAYOUTS = {
@@ -622,8 +622,8 @@ async def run_slots(balance):
         pygame.draw.rect(screen, GOLD_SHADOW, (150, 80, 500, 130))
         pygame.draw.rect(screen, VINTAGE_GOLD, (152, 82, 496, 126), 2)
 
-        pay_text1 = label_font.render("7: x30 | BAR: x20 | ORANGE: x100 | GRAPE: x60", True, CHARCOAL)
-        pay_text2 = label_font.render("LEMON: x40 | BELL: x10 | CHERRY x1/x2/x3: x1/x2/x5", True, CREAM_WHITE)
+        pay_text1 = label_font.render("7: x100 | BAR: x60 | ORANGE: x10 | GRAPE: x15", True, CHARCOAL)
+        pay_text2 = label_font.render("LEMON: x20 | BELL: x40 | CHERRY x1/x2/x3: x1/x2/x5", True, CREAM_WHITE)
         screen.blit(pay_text1, (160, 92))
         screen.blit(pay_text2, (160, 142))
 
