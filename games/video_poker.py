@@ -212,7 +212,109 @@ label_font = pygame.font.SysFont(font_options, 14, bold=True)
 btn_font = pygame.font.SysFont(font_options, 14, bold=True)
 pay_font = pygame.font.SysFont("courier", 15, bold=True)
 card_num_font = pygame.font.SysFont("courier", 26, bold=True)
-card_suit_font = pygame.font.SysFont(font_options, 38, bold=True)
+
+
+# ============================================================
+#     VECTOR SUIT ICON ENGINE (SAME TECHNIQUE AS BLACKJACK)
+# Mathematically accurate heart/spade curves and diamond/club
+# shapes, drawn at 4x resolution then smoothscaled down, cached
+# per (suit, size) so nothing is regenerated every frame.
+# ============================================================
+SUIT_ICON_CACHE = {}
+
+
+def create_flat_suit_icon(suit_type, size=32):
+  scale = 4
+  high_res = size * scale
+  surf_high = pygame.Surface((high_res, high_res), pygame.SRCALPHA)
+  color = CRT_RED if suit_type in ["♥", "♦"] else CRT_BLACK
+  center = high_res / 2
+
+  if suit_type == "♦":
+    pts = [
+        (center, high_res * 0.05),
+        (high_res * 0.88, center),
+        (center, high_res * 0.95),
+        (high_res * 0.12, center),
+    ]
+    pygame.draw.polygon(surf_high, color, pts)
+
+  elif suit_type == "♥":
+    pts = []
+    steps = 120
+    for i in range(steps):
+      t = (i / steps) * 2 * math.pi
+      x = 16 * (math.sin(t) ** 3)
+      y = -(
+          13 * math.cos(t)
+          - 5 * math.cos(2 * t)
+          - 2 * math.cos(3 * t)
+          - math.cos(4 * t)
+      )
+      px = center + (x / 17.5) * (high_res * 0.45)
+      py = (center + 2) + (y / 17.5) * (high_res * 0.42)
+      pts.append((px, py))
+    pygame.draw.polygon(surf_high, color, pts)
+
+  elif suit_type == "♠":
+    pts = []
+    steps = 120
+    for i in range(steps):
+      t = (i / steps) * 2 * math.pi
+      x = 16 * (math.sin(t) ** 3)
+      y = (
+          13 * math.cos(t)
+          - 5 * math.cos(2 * t)
+          - 2 * math.cos(3 * t)
+          - math.cos(4 * t)
+      )
+      px = center + (x / 17.5) * (high_res * 0.42)
+      py = (center - high_res * 0.08) + (y / 17.5) * (high_res * 0.40)
+      pts.append((px, py))
+    pygame.draw.polygon(surf_high, color, pts)
+
+    stem = [
+        (center - high_res * 0.04, center),
+        (center + high_res * 0.04, center),
+        (center + high_res * 0.10, high_res * 0.90),
+        (center - high_res * 0.10, high_res * 0.90),
+    ]
+    pygame.draw.polygon(surf_high, color, stem)
+
+  elif suit_type == "♣":
+    r = high_res * 0.23
+    pygame.draw.circle(surf_high, color, (int(center), int(high_res * 0.32)), int(r))
+    pygame.draw.circle(surf_high, color, (int(high_res * 0.30), int(high_res * 0.52)), int(r))
+    pygame.draw.circle(surf_high, color, (int(high_res * 0.70), int(high_res * 0.52)), int(r))
+    pygame.draw.circle(surf_high, color, (int(center), int(high_res * 0.48)), int(r * 0.8))
+
+    stem = [
+        (center - high_res * 0.04, center),
+        (center + high_res * 0.04, center),
+        (center + high_res * 0.10, high_res * 0.90),
+        (center - high_res * 0.10, high_res * 0.90),
+    ]
+    pygame.draw.polygon(surf_high, color, stem)
+
+  return pygame.transform.smoothscale(surf_high, (size, size))
+
+
+def get_suit_icon(suit_type, size):
+  size = max(4, int(size))
+  key = (suit_type, size)
+  icon = SUIT_ICON_CACHE.get(key)
+  if icon is None:
+    icon = create_flat_suit_icon(suit_type, size)
+    SUIT_ICON_CACHE[key] = icon
+  return icon
+
+
+def blit_suit_icon(surface, suit_type, center_x, center_y, size):
+  icon = get_suit_icon(suit_type, size)
+  surface.blit(
+      icon,
+      (int(center_x - icon.get_width() / 2), int(center_y - icon.get_height() / 2)),
+  )
 
 
 # ============================================================
@@ -259,14 +361,7 @@ class AnimatedCard:
         num_surf = card_num_font.render(rank, True, txt_color)
         surface.blit(num_surf, (draw_rect.x + 6, draw_rect.y + 6))
 
-        suit_surf = card_suit_font.render(suit, True, txt_color)
-        surface.blit(
-            suit_surf,
-            (
-                draw_rect.centerx - suit_surf.get_width() // 2,
-                draw_rect.centery - suit_surf.get_height() // 2,
-            ),
-        )
+        blit_suit_icon(surface, suit, draw_rect.centerx, draw_rect.centery, 40)
 
       if is_held:
         hold_rect = pygame.Rect(
