@@ -63,24 +63,44 @@ button_font = pygame.font.SysFont(FONT_OPTIONS, 15, bold=True)
 SAVE_FILE = "chips_save.json"
 STARTING_BALANCE = 1000
 
+try:
+    import js
+    HAS_JS = True
+except ImportError:
+    HAS_JS = False
+
 
 def load_balance():
-    try:
-        if os.path.exists(SAVE_FILE):
-            with open(SAVE_FILE, "r") as f:
-                data = json.load(f)
-                return int(data.get("balance", STARTING_BALANCE))
-    except Exception as e:
-        print("Could not load save file:", e)
+    if HAS_JS:
+        try:
+            saved = js.localStorage.getItem("terminal_casino_bankroll")
+            if saved is not None:
+                return int(saved)
+        except Exception as e:
+            print("Could not load from localStorage:", e)
+    else:
+        try:
+            if os.path.exists(SAVE_FILE):
+                with open(SAVE_FILE, "r") as f:
+                    data = json.load(f)
+                    return int(data.get("balance", STARTING_BALANCE))
+        except Exception as e:
+            print("Could not load save file:", e)
     return STARTING_BALANCE
 
 
 def save_balance(balance):
-    try:
-        with open(SAVE_FILE, "w") as f:
-            json.dump({"balance": balance}, f)
-    except Exception as e:
-        print("Could not save balance:", e)
+    if HAS_JS:
+        try:
+            js.localStorage.setItem("terminal_casino_bankroll", str(balance))
+        except Exception as e:
+            print("Could not save to localStorage:", e)
+    else:
+        try:
+            with open(SAVE_FILE, "w") as f:
+                json.dump({"balance": balance}, f)
+        except Exception as e:
+            print("Could not save balance:", e)
 
 
 # ----------------------------------------------------------------
