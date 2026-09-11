@@ -17,15 +17,55 @@ HORSE_NAMES = {
     5: "Cyclone"
 }
 
+# ============================================================
+#         WIN / PLACE / SHOW BET TYPE DEFINITIONS
+# ============================================================
+# Real horse racing offers three straight bet types on one horse:
+#   WIN   - horse must finish 1st                    (riskiest, highest payout)
+#   PLACE - horse must finish 1st or 2nd              (safer, lower payout)
+#   SHOW  - horse must finish 1st, 2nd, or 3rd         (safest, lowest payout)
+# Payout multiplier is applied to the wager (multiplier already includes
+# return of the original bet, matching the existing 4:1 -> x5 convention).
 
-def calculate_racing_winnings(chosen_horse, winning_horse, bet_amount):
-    """Processes straight-up single horse win payouts at 4-to-1 odds."""
+BET_TYPES = ["WIN", "PLACE", "SHOW"]
 
-    if chosen_horse == winning_horse:
-        # 4:1 profit + original wager returned
-        return bet_amount * 5, f"{HORSE_NAMES[winning_horse]} Won the Race!"
+BET_TYPE_INFO = {
+    "WIN":   {"positions": {1},       "multiplier": 5, "odds_label": "4-1"},
+    "PLACE": {"positions": {1, 2},    "multiplier": 3, "odds_label": "2-1"},
+    "SHOW":  {"positions": {1, 2, 3}, "multiplier": 2, "odds_label": "1-1"},
+}
 
-    return 0, None
+
+def _ordinal(n):
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def calculate_racing_winnings(chosen_horse, race_rankings, bet_amount, bet_type):
+    """Processes straight-up single horse Win/Place/Show payouts.
+
+    race_rankings is the full finish order (list of horse ids, 1st to last).
+    """
+
+    info = BET_TYPE_INFO[bet_type]
+    finish_position = race_rankings.index(chosen_horse) + 1
+
+    if finish_position in info["positions"]:
+        payout = bet_amount * info["multiplier"]
+        desc = (
+            f"{HORSE_NAMES[chosen_horse]} finished "
+            f"{_ordinal(finish_position)} \u2014 {bet_type} bet cashes!"
+        )
+        return payout, desc
+
+    desc = (
+        f"{HORSE_NAMES[chosen_horse]} finished {_ordinal(finish_position)} \u2014 "
+        f"not enough for a {bet_type} bet."
+    )
+    return 0, desc
 
 
 # ============================================================
@@ -293,6 +333,12 @@ felt_font = pygame.font.SysFont(
     bold=True
 )
 
+bet_type_font = pygame.font.SysFont(
+    "arial",
+    15,
+    bold=True
+)
+
 
 # ============================================================
 #                         LIVE STATES
@@ -308,7 +354,7 @@ async def run_mechanical_derby(balance):
     active_chip_wager = 10
 
     win_message = (
-        "CHOOSE CHIP VALUE, DROP TOKENS ON YOUR TARGET HORSE, "
+        "CHOOSE CHIP VALUE, PICK WIN/PLACE/SHOW, DROP TOKENS ON YOUR TARGET HORSE, "
         "THEN START!"
     )
 
@@ -316,6 +362,7 @@ async def run_mechanical_derby(balance):
     # BETTING, RACING, RESOLVED
 
     selected_horse = 0
+    selected_bet_type = "WIN"
 
     player_bets = {
         1: 0,
@@ -419,6 +466,16 @@ async def run_mechanical_derby(balance):
             (212, 163, 89)
         )
     ]
+
+    # ============================================================
+    #                  WIN / PLACE / SHOW SELECTOR
+    # ============================================================
+
+    bet_type_rects = {
+        "WIN":   pygame.Rect(620, 575, 105, 36),
+        "PLACE": pygame.Rect(735, 575, 105, 36),
+        "SHOW":  pygame.Rect(850, 575, 105, 36),
+    }
 
 
     # ============================================================
@@ -604,6 +661,34 @@ async def run_mechanical_derby(balance):
                             )
 
                     # ---------------------------------------------
+                    # WIN / PLACE / SHOW SELECTION
+                    # ---------------------------------------------
+
+                    for bet_type, rect in bet_type_rects.items():
+
+                        if rect.collidepoint(mouse_pos):
+
+                            if selected_horse == 0:
+
+                                selected_bet_type = bet_type
+
+                                win_message = (
+                                    f"BET TYPE SET TO {bet_type} "
+                                    f"({BET_TYPE_INFO[bet_type]['odds_label']} ODDS)."
+                                )
+
+                                play_sound(
+                                    snd_chip
+                                )
+
+                            else:
+
+                                win_message = (
+                                    "\u274c CLEAR THE BOARD BEFORE "
+                                    "CHANGING WIN/PLACE/SHOW!"
+                                )
+
+                    # ---------------------------------------------
                     # CLEAR CHIPS
                     # ---------------------------------------------
 
@@ -657,9 +742,9 @@ async def run_mechanical_derby(balance):
 
                                     win_message = (
                                         f"BET PLACED: {HORSE_NAMES[horse_id]} "
-                                        f"(#{horse_id}) — "
+                                        f"(#{horse_id}) \u2014 "
                                         f"${player_bets[horse_id]} "
-                                        f"TOTAL"
+                                        f"TOTAL TO {selected_bet_type}"
                                     )
 
                                     play_sound(
@@ -669,14 +754,14 @@ async def run_mechanical_derby(balance):
                                 else:
 
                                     win_message = (
-                                        "❌ NOT ENOUGH MACHINE "
+                                        "\u274c NOT ENOUGH MACHINE "
                                         "CREDITS FOR THAT CHIP!"
                                     )
 
                             else:
 
                                 win_message = (
-                                    "❌ STRAIGHT-UP BETS ONLY! "
+                                    "\u274c STRAIGHT-UP BETS ONLY! "
                                     "CLEAR THE BOARD TO "
                                     "CHOOSE A DIFFERENT HORSE."
                                 )
@@ -714,7 +799,7 @@ async def run_mechanical_derby(balance):
                         else:
 
                             win_message = (
-                                "❌ DROP TOKENS ON A HORSE "
+                                "\u274c DROP TOKENS ON A HORSE "
                                 "CELL BEFORE CALLING "
                                 "THE GATES!"
                             )
@@ -751,7 +836,7 @@ async def run_mechanical_derby(balance):
 
                         win_message = (
                             "TRACK CLEARED. PLACE A "
-                            "STRAIGHT WIN BET ON YOUR "
+                            "WIN/PLACE/SHOW BET ON YOUR "
                             "RUNNER TO START."
                         )
 
@@ -813,8 +898,6 @@ async def run_mechanical_derby(balance):
 
                 game_stage = "RESOLVED"
 
-                winner = race_rankings[0]
-
                 wagered_cash = player_bets.get(
                     selected_horse,
                     0
@@ -823,19 +906,22 @@ async def run_mechanical_derby(balance):
                 total_won, outcome_desc = (
                     calculate_racing_winnings(
                         selected_horse,
-                        winner,
-                        wagered_cash
+                        race_rankings,
+                        wagered_cash,
+                        selected_bet_type
                     )
                 )
 
                 balance += total_won
 
+                odds_label = BET_TYPE_INFO[selected_bet_type]["odds_label"]
+
                 if total_won > 0:
 
                     win_message = (
-                        f"🎉 WINNER! "
+                        f"\U0001F389 WINNER! "
                         f"{outcome_desc} "
-                        f"PAYOUT (4-1 ODDS): "
+                        f"PAYOUT ({selected_bet_type} @ {odds_label} ODDS): "
                         f"+${total_won}!"
                     )
 
@@ -846,10 +932,8 @@ async def run_mechanical_derby(balance):
                 else:
 
                     win_message = (
-                        f"😢 RACE OVER! "
-                        f"{HORSE_NAMES[winner]} "
-                        f"hit the wire first. "
-                        f"Your bet on {HORSE_NAMES[selected_horse]} lost."
+                        f"\U0001F622 RACE OVER! "
+                        f"{outcome_desc}"
                     )
 
                     play_sound(
@@ -1115,7 +1199,7 @@ async def run_mechanical_derby(balance):
         )
 
         sub_txt = label_font.render(
-            "★ PAYS 4-1 ODDS ★",
+            f"\u2605 {selected_bet_type} PAYS {BET_TYPE_INFO[selected_bet_type]['odds_label']} ODDS \u2605",
             True,
             CREAM_WHITE
         )
@@ -1348,6 +1432,46 @@ async def run_mechanical_derby(balance):
 
 
         # ========================================================
+        #              WIN / PLACE / SHOW SELECTOR ROW
+        # ========================================================
+
+        if game_stage == "BETTING":
+
+            for bet_type, rect in bet_type_rects.items():
+
+                is_selected = (bet_type == selected_bet_type)
+
+                bg = VINTAGE_GOLD if is_selected else CHARCOAL
+                fg = CHARCOAL if is_selected else CREAM_WHITE
+
+                pygame.draw.rect(screen, bg, rect, 0, 6)
+                pygame.draw.rect(screen, CREAM_WHITE, rect, 1, 6)
+
+                label_txt = bet_type_font.render(bet_type, True, fg)
+                odds_txt = chip_num_font.render(
+                    BET_TYPE_INFO[bet_type]["odds_label"],
+                    True,
+                    fg
+                )
+
+                screen.blit(
+                    label_txt,
+                    (
+                        rect.centerx - label_txt.get_width() // 2,
+                        rect.y + 4
+                    )
+                )
+
+                screen.blit(
+                    odds_txt,
+                    (
+                        rect.centerx - odds_txt.get_width() // 2,
+                        rect.y + 21
+                    )
+                )
+
+
+        # ========================================================
         #                    ACTION DASHBOARD
         # ========================================================
 
@@ -1456,7 +1580,7 @@ async def run_mechanical_derby(balance):
 
             msg_color = VINTAGE_GOLD
 
-        elif "❌" in win_message:
+        elif "\u274c" in win_message:
 
             msg_color = BRIGHT_RED
 
@@ -1503,3 +1627,7 @@ async def run_mechanical_derby(balance):
 
         clock.tick(60)
     return balance
+
+
+if __name__ == "__main__":
+    asyncio.run(run_mechanical_derby(1000))
