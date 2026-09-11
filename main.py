@@ -352,10 +352,6 @@ async def main():
                 save_balance(balance)
                 pygame.quit()
                 sys.exit()
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                save_balance(balance)
-                pygame.quit()
-                sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if reset_btn_rect.collidepoint(mouse_pos):
                     balance = STARTING_BALANCE
