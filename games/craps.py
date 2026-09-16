@@ -199,26 +199,31 @@ def evaluate_craps_wagers(die1, die2, point, active_bets, come_points, come_poin
 
     # 8. Center Proposition Bets
     prop_specs = {
-        "SEVEN": ([7], 5),
-        "HARD_8": ([8], 10, True),
-        "HARD_6": ([6], 10, True),
-        "HARD_4": ([4], 8, True),
-        "HARD_10": ([10], 8, True),
-        "CRAPS": ([2, 3, 12], 8)
+        "SEVEN": ([7], 5, False, True),
+        "HARD_8": ([8], 10, True, False),
+        "HARD_6": ([6], 10, True, False),
+        "HARD_4": ([4], 8, True, False),
+        "HARD_10": ([10], 8, True, False),
+        "CRAPS": ([2, 3, 12], 8, False, True)
     }
     for prop_key, spec in prop_specs.items():
         pr_amt = active_bets.get(prop_key, 0)
         if pr_amt > 0:
-            targets = spec[0]
-            mult = spec[1]
-            needs_hard = spec[2] if len(spec) > 2 else False
+            targets, mult, needs_hard, one_roll = spec
 
             if total_dice in targets and (not needs_hard or is_hard):
                 win_val = pr_amt * mult
                 payout += win_val
                 messages.append(f"{prop_key.replace('_', ' ')} Win! (+${win_val})")
                 active_bets[prop_key] = 0
+            elif one_roll:
+                # Seven and Craps are one-roll bets: anything other than a hit
+                # loses immediately, it doesn't get to sit and wait for another roll.
+                messages.append(f"{prop_key.replace('_', ' ')} Loss. (-${pr_amt})")
+                active_bets[prop_key] = 0
             elif total_dice == 7 or (needs_hard and total_dice in targets and not is_hard):
+                # Hardways stay up across multiple rolls until a hard hit,
+                # an easy hit of the same number, or a seven-out.
                 messages.append(f"{prop_key.replace('_', ' ')} Loss. (-${pr_amt})")
                 active_bets[prop_key] = 0
 
