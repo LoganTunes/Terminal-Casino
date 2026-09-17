@@ -535,23 +535,7 @@ async def run_keno(balance):
                                 "CHOOSE NEW SPOTS AND WAGER."
                             )
 
-                    # ---------------------------------------------
-                    # NEW TICKET: full reset, for anyone who wants
-                    # to pick different numbers or a different bet.
-                    # ---------------------------------------------
-                    elif clear_btn_rect.collidepoint(mouse_pos):
 
-                        player_spots.clear()
-                        drawn_numbers.clear()
-
-                        current_bet = 0
-
-                        game_stage = "BETTING"
-
-                        win_message = (
-                            "NEW TICKET. "
-                            "CHOOSE SPOTS AND WAGER."
-                        )
 
 
         # =================================================       #                 PNEUMATIC BALL DRAWING
@@ -969,18 +953,9 @@ async def run_keno(balance):
             )
 
 
-        # CLEAR / NEW TICKET BUTTON - shown while betting AND
-        # on the resolved screen (as "NEW TICKET"), so players
-        # who don't want to keep their numbers always have a way
-        # to start over without touching the game state manually.
+        # CLEAR TICKET BUTTON ONLY DURING BETTING
 
-        if game_stage in ("BETTING", "RESOLVED"):
-
-            clear_label = (
-                "CLEAR TICKET"
-                if game_stage == "BETTING"
-                else "NEW TICKET"
-            )
+        if game_stage == "BETTING":
 
             pygame.draw.rect(
                 screen,
@@ -999,7 +974,7 @@ async def run_keno(balance):
             )
 
             clear_txt = label_font.render(
-                clear_label,
+                "CLEAR TICKET",
                 True,
                 TEXT_WHITE
             )
