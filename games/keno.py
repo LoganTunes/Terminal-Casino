@@ -386,13 +386,17 @@ async def run_keno(balance):
 
                     # ---------------------------------------------
                     # Video Poker Bet Buttons (+ / -)
+                    # Wager is only a reservation here; the balance
+                    # is charged once when the balls actually drop
+                    # (see Draw Balls below). This is what lets a
+                    # bet (and the chosen spots) carry over cleanly
+                    # into the next round, same as Video Poker.
                     # ---------------------------------------------
                     for label, amount, rect in bet_buttons:
                         if rect.collidepoint(mouse_pos):
                             if amount > 0:
-                                if balance >= amount:
+                                if current_bet + amount <= balance:
                                     current_bet += amount
-                                    balance -= amount
                                     play_sound(snd_chip)
                                     win_message = f"WAGER: ${current_bet}"
                                 else:
@@ -401,21 +405,17 @@ async def run_keno(balance):
                                 sub_val = abs(amount)
                                 if current_bet >= sub_val:
                                     current_bet -= sub_val
-                                    balance += sub_val
-                                    play_sound(snd_chip)
-                                    win_message = f"WAGER: ${current_bet}"
                                 else:
                                     current_bet = 0
-                                    balance += current_bet
-                                    win_message = "WAGER: $0"
+                                play_sound(snd_chip)
+                                win_message = f"WAGER: ${current_bet}"
 
                     # ---------------------------------------------
-                    # Clear ticket
+                    # Clear ticket (fresh spots + fresh wager)
                     # ---------------------------------------------
 
                     if clear_btn_rect.collidepoint(mouse_pos):
 
-                        balance += current_bet
                         current_bet = 0
 
                         player_spots.clear()
@@ -456,7 +456,8 @@ async def run_keno(balance):
                                     )
 
                     # ---------------------------------------------
-                    # Draw balls
+                    # Draw balls - the wager is actually charged
+                    # to the balance right here, once per round.
                     # ---------------------------------------------
 
                     if draw_btn_rect.collidepoint(mouse_pos):
@@ -466,15 +467,26 @@ async def run_keno(balance):
                             and len(player_spots) > 0
                         ):
 
-                            game_stage = "DRAWING"
+                            if balance >= current_bet:
 
-                            drawn_numbers.clear()
-                            draw_timer = 0
+                                balance -= current_bet
 
-                            win_message = (
-                                "PNEUMATIC BLOWER ACTIVE! "
-                                "DRAWING 20 BALLS..."
-                            )
+                                game_stage = "DRAWING"
+
+                                drawn_numbers.clear()
+                                draw_timer = 0
+
+                                win_message = (
+                                    "PNEUMATIC BLOWER ACTIVE! "
+                                    "DRAWING 20 BALLS..."
+                                )
+
+                            else:
+
+                                win_message = (
+                                    "❌ NOT ENOUGH CREDITS "
+                                    "TO COVER THIS WAGER!"
+                                )
 
                         elif current_bet == 0:
 
@@ -496,11 +508,38 @@ async def run_keno(balance):
 
                 elif game_stage == "RESOLVED":
 
-                    if (
-                        draw_btn_rect.collidepoint(mouse_pos)
-                        or clear_btn_rect.collidepoint(mouse_pos)
-                        or bet_box_rect.collidepoint(mouse_pos)
-                    ):
+                    # ---------------------------------------------
+                    # PLAY AGAIN: keeps the same spots and the same
+                    # wager queued up, just clears the drawn balls
+                    # and returns to the betting screen so the next
+                    # Draw Balls press starts a fresh round.
+                    # ---------------------------------------------
+                    if draw_btn_rect.collidepoint(mouse_pos):
+
+                        drawn_numbers.clear()
+
+                        if current_bet > balance:
+                            current_bet = balance
+
+                        game_stage = "BETTING"
+
+                        if current_bet > 0 and len(player_spots) > 0:
+                            win_message = (
+                                f"SAME {len(player_spots)} SPOTS & "
+                                f"${current_bet} WAGER READY. "
+                                "TAP DRAW BALLS!"
+                            )
+                        else:
+                            win_message = (
+                                "TICKET WINDOW OPEN. "
+                                "CHOOSE NEW SPOTS AND WAGER."
+                            )
+
+                    # ---------------------------------------------
+                    # NEW TICKET: full reset, for anyone who wants
+                    # to pick different numbers or a different bet.
+                    # ---------------------------------------------
+                    elif clear_btn_rect.collidepoint(mouse_pos):
 
                         player_spots.clear()
                         drawn_numbers.clear()
@@ -510,8 +549,8 @@ async def run_keno(balance):
                         game_stage = "BETTING"
 
                         win_message = (
-                            "TICKET WINDOW OPEN. "
-                            "CHOOSE NEW SPOTS AND WAGER."
+                            "NEW TICKET. "
+                            "CHOOSE SPOTS AND WAGER."
                         )
 
 
@@ -889,10 +928,10 @@ async def run_keno(balance):
 
         else:
 
-            action_label = "RESET CONSOLE"
+            action_label = "PLAY AGAIN"
 
 
-        # DRAW / RESET BUTTON
+        # DRAW / PLAY AGAIN BUTTON
 
         if game_stage != "DRAWING":
 
@@ -930,9 +969,18 @@ async def run_keno(balance):
             )
 
 
-        # CLEAR BUTTON ONLY DURING BETTING
+        # CLEAR / NEW TICKET BUTTON - shown while betting AND
+        # on the resolved screen (as "NEW TICKET"), so players
+        # who don't want to keep their numbers always have a way
+        # to start over without touching the game state manually.
 
-        if game_stage == "BETTING":
+        if game_stage in ("BETTING", "RESOLVED"):
+
+            clear_label = (
+                "CLEAR TICKET"
+                if game_stage == "BETTING"
+                else "NEW TICKET"
+            )
 
             pygame.draw.rect(
                 screen,
@@ -951,7 +999,7 @@ async def run_keno(balance):
             )
 
             clear_txt = label_font.render(
-                "CLEAR TICKET",
+                clear_label,
                 True,
                 TEXT_WHITE
             )
@@ -990,6 +1038,7 @@ async def run_keno(balance):
             "WINNER" in win_message
             or "ADJUST" in win_message
             or "WAGER" in win_message
+            or "READY" in win_message
         ):
 
             msg_color = ACCENT_AMBER
