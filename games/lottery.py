@@ -721,7 +721,7 @@ class ScratchCanvas:
 # ============================================================
 #                    MAIN ASYNC GAME LOOP
 # ============================================================
-async def run_scratch_cabinet(balance=1000):
+async def run_lottery(balance=1000):
     pygame.init()
 
     try:
@@ -917,4 +917,4 @@ async def run_scratch_cabinet(balance=1000):
     return bankroll.balance + cabinet.inserted_wager
 
 if __name__ == "__main__":
-    asyncio.run(run_scratch_cabinet(1000))
+    asyncio.run(run_lottery(1000))
