@@ -596,11 +596,26 @@ def process_deal_sequence(current_time):
 # ============================================================
 #                       ASYNC MAIN LOOP
 # ============================================================
-async def main():
-    global balance, active_chip_wager, win_message, game_stage
+async def run_baccarat(starting_balance):
+    global balance, active_chip_wager, win_message, game_stage, screen
     global player_anim, banker_anim, deal_order, deal_index, deal_timer, player_bets
 
-    while True:
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Vintage Vegas Baccarat - Punto Banco Table")
+
+    balance = starting_balance
+    active_chip_wager = 10
+    win_message = "STACK CHIPS ON PLAYER, BANKER, OR TIE, THEN DEAL!"
+    game_stage = "BETTING"
+    player_anim = []
+    banker_anim = []
+    deal_order = []
+    deal_index = 0
+    deal_timer = 0
+    player_bets = {"PLAYER": 0, "BANKER": 0, "TIE": 0}
+
+    running = True
+    while running:
         current_time = pygame.time.get_ticks()
 
         for event in pygame.event.get():
@@ -608,8 +623,7 @@ async def main():
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                pygame.quit()
-                sys.exit()
+                running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
 
@@ -841,12 +855,11 @@ async def main():
             msg_surf = label_font.render(win_message, True, msg_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 622))
 
-        _hint_surf = _lobby_hint_font.render("ESC: Quit", True, (230, 200, 140))
+        _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
         screen.blit(_hint_surf, (15, HEIGHT - 25))
 
         pygame.display.flip()
         clock.tick(60)
         await asyncio.sleep(0)
 
-
-asyncio.run(main())
+    return balance
