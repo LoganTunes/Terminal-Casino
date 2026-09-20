@@ -3,7 +3,7 @@ VEGAS SCRATCH DISPENSER CABINET ENGINE (DYNAMIC WORD LENGTH PAYOUTS + HARD VOWEL
 ==================================================================================
 - Non-blocking Async Event Loop (`asyncio.sleep(0)`)
 - Dynamic Ticket Payout & Prize Scaling
-- Restricted Vowel Frequency for Tier 3 Word Match
+- Pure Weighted Random Letter Selection for Tier 3 Word Match
 """
 import asyncio
 import math
@@ -201,70 +201,61 @@ class TicketPayloadGenerator:
             payload["target_words"] = target_words
             per_letter_rate = max(10, wager // 4)
             caller_letters = []
-            MAX_VOWELS = 3  # Hard cap on caller vowels per ticket
 
-            def count_vowels(letters):
-                return sum(1 for c in letters if c in VOWELS)
+            # Determine number of winning target words allowed
+            target_win_count = 1 if is_winner else 0
 
-            num_winning_words = (1 if multiplier <= 4 else 2) if is_winner else 0
+            # Vowels get lower weight (1) vs Consonants (8) to enforce rarity
+            alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            letter_weights = [1 if c in VOWELS else 8 for c in alphabet]
 
-            def word_is_protected(idx):
-                return idx >= num_winning_words
+            def word_is_complete(word, letter_set):
+                return all(c in letter_set for c in word)
+
+            def current_completed_words(letter_set):
+                return [w for w in target_words if word_is_complete(w, letter_set)]
 
             def is_safe_to_add(char):
-                """Check if adding char violates vowel caps or completes any protected word."""
                 if char in caller_letters:
                     return False
-                if (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS):
+                
+                test_set = set(caller_letters + [char])
+                completed = current_completed_words(test_set)
+                
+                # Check that adding char does not exceed permitted winning word count
+                if len(completed) > target_win_count:
                     return False
-
-                test_letters = caller_letters + [char]
-                for i, w_target in enumerate(target_words):
-                    if word_is_protected(i) and all(c in test_letters for c in w_target):
-                        return False
                 return True
 
-            # 1. Force-fill winning words if ticket is meant to win
+            # 1. Fill letters for a winning target word if ticket is designated a winner
             if is_winner:
-                winning_words = target_words[:num_winning_words]
-                for w in winning_words:
-                    for char in w:
-                        if char not in caller_letters:
-                            caller_letters.append(char)
+                winning_word = random.choice(target_words)
+                for char in winning_word:
+                    if char not in caller_letters:
+                        caller_letters.append(char)
 
-            # 2. Add partial letters for protected words safely
-            for i, w in enumerate(target_words):
-                if word_is_protected(i):
-                    unmatched = [c for c in w if c not in caller_letters]
-                    if len(unmatched) > 1:
-                        for char in unmatched[:-1]:
-                            if len(caller_letters) < 16 and is_safe_to_add(char):
-                                caller_letters.append(char)
-
-            # 3. Fill remaining caller_letters safely up to 16
-            alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            weights = [1 if c in VOWELS else 6 for c in alphabet]
-
+            # 2. Fill remaining caller_letters via pure weighted random sampling up to 16
             while len(caller_letters) < 16:
                 valid_candidates = []
                 candidate_weights = []
-                for char, w in zip(alphabet, weights):
+
+                for char, weight in zip(alphabet, letter_weights):
                     if is_safe_to_add(char):
                         valid_candidates.append(char)
-                        candidate_weights.append(w)
+                        candidate_weights.append(weight)
 
                 if not valid_candidates:
                     break
 
-                extra = random.choices(valid_candidates, weights=candidate_weights, k=1)[0]
-                caller_letters.append(extra)
+                chosen_char = random.choices(valid_candidates, weights=candidate_weights, k=1)[0]
+                caller_letters.append(chosen_char)
 
             payload["caller_letters"] = caller_letters[:16]
 
-            # Audit exact payout matching completed target words
+            # Audit payout based on completed target words
             actual_payout = 0
             for w in target_words:
-                if all(char in payload["caller_letters"] for char in w):
+                if word_is_complete(w, set(payload["caller_letters"])):
                     actual_payout += len(w) * per_letter_rate
 
             payload["payout"] = actual_payout
