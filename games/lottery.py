@@ -1,17 +1,19 @@
 """
-VEGAS SCRATCH DISPENSER CABINET ENGINE (DYNAMIC WORD LENGTH PAYOUTS + HARD VOWELS)
-==================================================================================
+VEGAS SCRATCH DISPENSER CABINET ENGINE (SYSTEM-ENTROPY HARD RANDOMIZATION)
+==========================================================================
 - Non-blocking Async Event Loop (`asyncio.sleep(0)`)
-- Dynamic Ticket Payout & Prize Scaling
-- Pure Weighted Random Letter Selection for Tier 3 Word Match
+- System Entropy Randomization (`secrets.SystemRandom()`)
+- Dynamic Dynamic Word Bank Generation with 1:8 Vowel-to-Consonant Odds
 """
 import asyncio
 import math
-import random
 import secrets
 import sys
 import array
 import pygame
+
+# Hardware OS-Level True Randomizer
+sys_rand = secrets.SystemRandom()
 
 # ============================================================
 #                    PALETTE DEFINITIONS
@@ -90,13 +92,13 @@ class ParticleSystem:
 
     def emit_dust(self, pos, count=5):
         for _ in range(count):
-            angle = random.uniform(0, math.pi * 2)
-            speed = random.uniform(1.0, 3.5)
+            angle = sys_rand.uniform(0, math.pi * 2)
+            speed = sys_rand.uniform(1.0, 3.5)
             vx = math.cos(angle) * speed
             vy = math.sin(angle) * speed
-            color = random.choice([FOIL_SHINE, VINTAGE_GOLD, CREAM_WHITE])
-            size = random.randint(2, 4)
-            life = random.randint(12, 25)
+            color = sys_rand.choice([FOIL_SHINE, VINTAGE_GOLD, CREAM_WHITE])
+            size = sys_rand.randint(2, 4)
+            life = sys_rand.randint(12, 25)
             self.particles.append([list(pos), [vx, vy], color, size, life])
 
     def update_and_draw(self, surface):
@@ -126,21 +128,17 @@ class CasinoBankroll:
         return False
 
 # ============================================================
-#              CSPRNG TICKET DATA GENERATION
+#          SYSTEM-ENTROPY CSPRNG DATA GENERATOR
 # ============================================================
 class TicketPayloadGenerator:
-    @staticmethod
-    def get_secure_random(low, high):
-        return low + secrets.randbelow(high - low + 1)
-
     @classmethod
     def generate_payload(cls, tier, wager):
-        win_chance = secrets.randbelow(100)
+        win_chance = sys_rand.randrange(100)
         is_winner = win_chance < 38
         multiplier = 0
 
         if is_winner:
-            mult_roll = secrets.randbelow(100)
+            mult_roll = sys_rand.randrange(100)
             if mult_roll < 60:
                 multiplier = 2
             elif mult_roll < 85:
@@ -162,24 +160,24 @@ class TicketPayloadGenerator:
         }
 
         if tier == 1:
-            win_num = cls.get_secure_random(10, 30)
+            win_num = sys_rand.randint(10, 30)
             payload["winning_numbers"] = [win_num]
             your_nums = []
             for i in range(4):
                 if is_winner and i == 0:
                     your_nums.append((win_num, total_payout))
                 else:
-                    fake_num = cls.get_secure_random(10, 30)
+                    fake_num = sys_rand.randint(10, 30)
                     while fake_num == win_num or fake_num in [n[0] for n in your_nums]:
-                        fake_num = cls.get_secure_random(10, 30)
+                        fake_num = sys_rand.randint(10, 30)
                     your_nums.append((fake_num, 0))
-            random.shuffle(your_nums)
+            sys_rand.shuffle(your_nums)
             payload["your_numbers"] = your_nums
 
         elif tier == 2:
-            win_nums = [cls.get_secure_random(1, 50), cls.get_secure_random(1, 50)]
+            win_nums = [sys_rand.randint(1, 50), sys_rand.randint(1, 50)]
             while win_nums[0] == win_nums[1]:
-                win_nums[1] = cls.get_secure_random(1, 50)
+                win_nums[1] = sys_rand.randint(1, 50)
             payload["winning_numbers"] = win_nums
 
             your_spots = []
@@ -187,27 +185,24 @@ class TicketPayloadGenerator:
             for i in range(8):
                 if is_winner and i in winning_slots:
                     target_win = total_payout // len(winning_slots)
-                    your_spots.append((random.choice(win_nums), target_win, f"{multiplier}X" if multiplier > 1 else "1X"))
+                    your_spots.append((sys_rand.choice(win_nums), target_win, f"{multiplier}X" if multiplier > 1 else "1X"))
                 else:
-                    fake_num = cls.get_secure_random(1, 50)
+                    fake_num = sys_rand.randint(1, 50)
                     while fake_num in win_nums or fake_num in [s[0] for s in your_spots]:
-                        fake_num = cls.get_secure_random(1, 50)
+                        fake_num = sys_rand.randint(1, 50)
                     your_spots.append((fake_num, 0, "1X"))
-            random.shuffle(your_spots)
+            sys_rand.shuffle(your_spots)
             payload["your_spots"] = your_spots
 
         elif tier == 3:
-            target_words = random.sample(CASINO_WORDBANK, 8)
+            # Fully dynamic target words shuffle per ticket call
+            target_words = sys_rand.sample(CASINO_WORDBANK, 8)
             payload["target_words"] = target_words
             per_letter_rate = max(10, wager // 4)
             caller_letters = []
 
-            # Determine number of winning target words allowed
             target_win_count = 1 if is_winner else 0
-
-            # Vowels get lower weight (1) vs Consonants (8) to enforce rarity
             alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            letter_weights = [1 if c in VOWELS else 8 for c in alphabet]
 
             def word_is_complete(word, letter_set):
                 return all(c in letter_set for c in word)
@@ -218,41 +213,40 @@ class TicketPayloadGenerator:
             def is_safe_to_add(char):
                 if char in caller_letters:
                     return False
-                
                 test_set = set(caller_letters + [char])
                 completed = current_completed_words(test_set)
-                
-                # Check that adding char does not exceed permitted winning word count
                 if len(completed) > target_win_count:
                     return False
                 return True
 
-            # 1. Fill letters for a winning target word if ticket is designated a winner
+            # If winning ticket, force letters for 1 winning word
             if is_winner:
-                winning_word = random.choice(target_words)
+                winning_word = sys_rand.choice(target_words)
                 for char in winning_word:
                     if char not in caller_letters:
                         caller_letters.append(char)
 
-            # 2. Fill remaining caller_letters via pure weighted random sampling up to 16
+            # System Entropy Weighted Letter Picker (Vowels = 1, Consonants = 8)
             while len(caller_letters) < 16:
-                valid_candidates = []
-                candidate_weights = []
+                candidates = []
+                weights = []
+                for c in alphabet:
+                    if is_safe_to_add(c):
+                        candidates.append(c)
+                        weights.append(1 if c in VOWELS else 8)
 
-                for char, weight in zip(alphabet, letter_weights):
-                    if is_safe_to_add(char):
-                        valid_candidates.append(char)
-                        candidate_weights.append(weight)
-
-                if not valid_candidates:
+                if not candidates:
                     break
 
-                chosen_char = random.choices(valid_candidates, weights=candidate_weights, k=1)[0]
+                # Hardware-random weighted sampling
+                chosen_char = sys_rand.choices(candidates, weights=weights, k=1)[0]
                 caller_letters.append(chosen_char)
 
+            # Extra entropy shuffle on the final sequence
+            sys_rand.shuffle(caller_letters)
             payload["caller_letters"] = caller_letters[:16]
 
-            # Audit payout based on completed target words
+            # Recalculate payout from final letter state
             actual_payout = 0
             for w in target_words:
                 if word_is_complete(w, set(payload["caller_letters"])):
@@ -262,33 +256,33 @@ class TicketPayloadGenerator:
             payload["is_winner"] = actual_payout > 0
 
         elif tier == 4:
-            payload["game1_num"] = cls.get_secure_random(1, 20)
-            payload["game1_your"] = [cls.get_secure_random(1, 20) for _ in range(3)]
+            payload["game1_num"] = sys_rand.randint(1, 20)
+            payload["game1_your"] = [sys_rand.randint(1, 20) for _ in range(3)]
             payload["game2_fast"] = f"${total_payout}" if is_winner else "TRY AGAIN"
             payload["game3_wheel"] = [total_payout if is_winner else 0, 0, 0, 0]
-            random.shuffle(payload["game3_wheel"])
+            sys_rand.shuffle(payload["game3_wheel"])
 
         elif tier == 5:
-            player_keys = [cls.get_secure_random(1, 9) for _ in range(6)]
+            player_keys = [sys_rand.randint(1, 9) for _ in range(6)]
             payload["grid_keys"] = player_keys
             safes = []
             for i in range(3):
                 if is_winner and i == 0:
-                    d1 = random.choice(player_keys)
-                    d2 = random.choice(player_keys)
+                    d1 = sys_rand.choice(player_keys)
+                    d2 = sys_rand.choice(player_keys)
                     code = f"{d1}{d2}"
                     payout = total_payout
                 else:
                     non_keys = [d for d in range(1, 10) if d not in player_keys]
                     if non_keys:
-                        d1 = random.choice(non_keys)
-                        d2 = cls.get_secure_random(1, 9)
+                        d1 = sys_rand.choice(non_keys)
+                        d2 = sys_rand.randint(1, 9)
                     else:
                         d1, d2 = 0, 0
                     code = f"{d1}{d2}"
                     payout = 0
                 safes.append({"code": code, "payout": payout})
-            random.shuffle(safes)
+            sys_rand.shuffle(safes)
             payload["safes"] = safes
 
         return payload
@@ -805,7 +799,7 @@ async def run_lottery(balance=1000):
                     scratch_canvas.scratch_line(start_local, current_local, poker_chip_radius)
                     prev_mouse_pos = current_local
                     particle_engine.emit_dust(mouse_pos, count=3)
-                    if random.random() < 0.35 and sfx["scrape"]:
+                    if sys_rand.random() < 0.35 and sfx["scrape"]:
                         sfx["scrape"].play()
             else:
                 prev_mouse_pos = None
