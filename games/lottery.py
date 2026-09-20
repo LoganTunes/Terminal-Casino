@@ -5,7 +5,6 @@ VEGAS SCRATCH DISPENSER CABINET ENGINE (DYNAMIC WORD LENGTH PAYOUTS + HARD VOWEL
 - Dynamic Ticket Payout & Prize Scaling
 - Restricted Vowel Frequency for Tier 3 Word Match
 """
-
 import asyncio
 import math
 import random
@@ -49,7 +48,6 @@ CASINO_WORDBANK = [
     "STACK", "FLUSH", "SUIT", "RISK", "COIN", "CHANCE", "TOKEN", "PAYOUT",
     "REEL", "SEVEN", "FORTUNE", "CHARM", "SHUFFLE", "BET", "HIGH", "WILD"
 ]
-
 VOWELS = set("AEIOU")
 
 # ============================================================
@@ -63,6 +61,7 @@ def generate_synth_sound(freq_list, duration_ms, wave_type="triangle", volume=0.
         total_samples = int(sample_rate * (duration_ms / 1000.0))
         buffer = array.array("h", [0] * total_samples)
         samples_per_freq = max(1, total_samples // len(freq_list))
+
         for i in range(total_samples):
             freq_idx = min(i // samples_per_freq, len(freq_list) - 1)
             freq = freq_list[freq_idx]
@@ -77,6 +76,7 @@ def generate_synth_sound(freq_list, duration_ms, wave_type="triangle", volume=0.
                 else:
                     val = int(32767 * math.sin(2 * math.pi * freq * t))
             buffer[i] = int(val * volume)
+
         return pygame.mixer.Sound(buffer=buffer)
     except Exception:
         return None
@@ -181,6 +181,7 @@ class TicketPayloadGenerator:
             while win_nums[0] == win_nums[1]:
                 win_nums[1] = cls.get_secure_random(1, 50)
             payload["winning_numbers"] = win_nums
+
             your_spots = []
             winning_slots = [0, 1] if multiplier >= 5 else [0]
             for i in range(8):
@@ -199,80 +200,58 @@ class TicketPayloadGenerator:
             target_words = random.sample(CASINO_WORDBANK, 8)
             payload["target_words"] = target_words
             per_letter_rate = max(10, wager // 4)
-
             caller_letters = []
             MAX_VOWELS = 3  # Hard cap on caller vowels per ticket
 
             def count_vowels(letters):
                 return sum(1 for c in letters if c in VOWELS)
 
-            num_winning_words = 1 if multiplier <= 4 else 2
+            num_winning_words = (1 if multiplier <= 4 else 2) if is_winner else 0
 
             def word_is_protected(idx):
-                # True if this target word must NOT be allowed to complete.
-                return (not is_winner) or (idx >= num_winning_words)
+                return idx >= num_winning_words
 
+            def is_safe_to_add(char):
+                """Check if adding char violates vowel caps or completes any protected word."""
+                if char in caller_letters:
+                    return False
+                if (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS):
+                    return False
+
+                test_letters = caller_letters + [char]
+                for i, w_target in enumerate(target_words):
+                    if word_is_protected(i) and all(c in test_letters for c in w_target):
+                        return False
+                return True
+
+            # 1. Force-fill winning words if ticket is meant to win
             if is_winner:
                 winning_words = target_words[:num_winning_words]
-
                 for w in winning_words:
                     for char in w:
                         if char not in caller_letters:
                             caller_letters.append(char)
 
-                # Add partial consonant letters for remaining words
-                for w in target_words[num_winning_words:]:
+            # 2. Add partial letters for protected words safely
+            for i, w in enumerate(target_words):
+                if word_is_protected(i):
                     unmatched = [c for c in w if c not in caller_letters]
                     if len(unmatched) > 1:
                         for char in unmatched[:-1]:
-                            vowel_check = (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS)
-                            if len(caller_letters) < 16 and char not in caller_letters and not vowel_check:
-                                caller_letters.append(char)
-            else:
-                # Guarantee NO word can be completely spelled out
-                for w in target_words:
-                    unmatched = [c for c in w if c not in caller_letters]
-                    if len(unmatched) > 1:
-                        for char in unmatched[:-1]:
-                            vowel_check = (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS)
-                            if len(caller_letters) < 16 and char not in caller_letters and not vowel_check:
+                            if len(caller_letters) < 16 and is_safe_to_add(char):
                                 caller_letters.append(char)
 
-            # Heavily weighted letter pool (Consonants 6x more likely than Vowels)
+            # 3. Fill remaining caller_letters safely up to 16
             alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
             weights = [1 if c in VOWELS else 6 for c in alphabet]
 
-            # FIX: previously this loop picked a random candidate letter FIRST and only
-            # afterwards checked whether it would complete a "protected" word - if it did,
-            # the letter was silently dropped but never excluded from being re-picked, so
-            # once every remaining legal letter would complete some protected word (very
-            # common on losing tickets, where ALL 8 words are protected), the loop could
-            # spin forever without len(caller_letters) ever changing, hanging the game.
-            # Now we filter candidates down to only SAFE letters before choosing, so each
-            # iteration either makes guaranteed progress or the loop cleanly breaks.
             while len(caller_letters) < 16:
-                current_vowels = count_vowels(caller_letters)
                 valid_candidates = []
                 candidate_weights = []
-
                 for char, w in zip(alphabet, weights):
-                    if char in caller_letters:
-                        continue
-                    if current_vowels >= MAX_VOWELS and char in VOWELS:
-                        continue
-
-                    test_letters = caller_letters + [char]
-                    would_complete_unwanted = False
-                    for i, w_target in enumerate(target_words):
-                        if word_is_protected(i) and all(c in test_letters for c in w_target):
-                            would_complete_unwanted = True
-                            break
-
-                    if would_complete_unwanted:
-                        continue
-
-                    valid_candidates.append(char)
-                    candidate_weights.append(w)
+                    if is_safe_to_add(char):
+                        valid_candidates.append(char)
+                        candidate_weights.append(w)
 
                 if not valid_candidates:
                     break
@@ -327,8 +306,6 @@ class TicketPayloadGenerator:
 #              REALISTIC VENDING MACHINE CABINET
 # ============================================================
 class VendingMachineCabinet:
-    # Vertical offset applied to every cabinet element (used to nudge the
-    # whole machine down on screen). Change this one value to reposition it.
     Y_SHIFT = 25
 
     def __init__(self, fonts, sfx):
@@ -417,7 +394,6 @@ class VendingMachineCabinet:
         for idx, range_lbl, name in tier_ranges:
             ty = 90 + s + ((idx - 1) * 92)
             is_active = (self.active_tier == idx)
-
             pygame.draw.rect(surface, CHROME_SHADOW, (460, ty + 70, 235, 6))
 
             card_bg = TIER_PALETTES[idx]["bg"]
@@ -500,8 +476,8 @@ class TicketRenderer:
         canvas = pygame.Surface((340, 540))
         tier = payload["tier"]
         palette = TIER_PALETTES[tier]
-        canvas.fill(palette["bg"])
 
+        canvas.fill(palette["bg"])
         pygame.draw.rect(canvas, VINTAGE_GOLD, (5, 5, 330, 530), 4, 6)
         pygame.draw.rect(canvas, palette["text"], (11, 11, 318, 518), 1, 4)
 
@@ -524,6 +500,7 @@ class TicketRenderer:
 
             your_txt = ticket_body_font.render("YOUR NUMBERS & PRIZES", True, palette["text"])
             canvas.blit(your_txt, (170 - your_txt.get_width() // 2, 195))
+
             for i, (num, prize) in enumerate(payload["your_numbers"]):
                 rx = 40 + (i % 2) * 140
                 ry = 230 + (i // 2) * 90
@@ -548,6 +525,7 @@ class TicketRenderer:
 
             your_txt = ticket_body_font.render("THE SIZZLING GRID", True, palette["text"])
             canvas.blit(your_txt, (170 - your_txt.get_width() // 2, 195))
+
             for i, (num, prize, mult) in enumerate(payload["your_spots"]):
                 rx = 40 + (i % 2) * 140
                 ry = 225 + (i // 2) * 70
@@ -565,11 +543,14 @@ class TicketRenderer:
         elif tier == 3:
             c_lbl = ticket_body_font.render("YOUR CALLER LETTERS", True, palette["text"])
             canvas.blit(c_lbl, (170 - c_lbl.get_width() // 2, 80))
+
             caller_letters = payload["caller_letters"]
             letters_top = " ".join(caller_letters[:8])
             letters_bot = " ".join(caller_letters[8:])
+
             bank_rect = pygame.Rect(20, 100, 300, 65)
             pygame.draw.rect(canvas, palette["text"], bank_rect, 2, 4)
+
             l_surf1 = prize_font.render(letters_top, True, VINTAGE_GOLD)
             l_surf2 = prize_font.render(letters_bot, True, VINTAGE_GOLD)
             canvas.blit(l_surf1, (170 - l_surf1.get_width() // 2, 108))
@@ -578,6 +559,7 @@ class TicketRenderer:
 
             w_hdr = ticket_body_font.render("YOUR TARGET WORDS", True, palette["text"])
             canvas.blit(w_hdr, (170 - w_hdr.get_width() // 2, 180))
+
             target_words = payload["target_words"]
             per_letter_rate = max(10, payload["wager"] // 4)
 
@@ -625,6 +607,7 @@ class TicketRenderer:
             pygame.draw.rect(canvas, palette["text"], g1_rect, 2, 4)
             g1_txt = label_font.render("GAME 1: LUCKY MATCH", True, VINTAGE_GOLD)
             canvas.blit(g1_txt, (30, 98))
+
             nums_str = f"LUCKY: {payload['game1_num']}  |  YOUR: {payload['game1_your']}"
             g1_surf = ticket_body_font.render(nums_str, True, palette["text"])
             canvas.blit(g1_surf, (30, 135))
@@ -650,6 +633,7 @@ class TicketRenderer:
         elif tier == 5:
             s_lbl = ticket_body_font.render("COMBINATION SAFES", True, VINTAGE_GOLD)
             canvas.blit(s_lbl, (170 - s_lbl.get_width() // 2, 85))
+
             for i, safe in enumerate(payload["safes"]):
                 s_rect = pygame.Rect(20 + (i * 105), 110, 90, 90)
                 pygame.draw.rect(canvas, VINTAGE_GOLD, s_rect, 2, 6)
@@ -664,6 +648,7 @@ class TicketRenderer:
             pygame.draw.rect(canvas, VINTAGE_GOLD, k_rect, 2, 6)
             k_title = label_font.render("VAULT KEY CODES", True, VINTAGE_GOLD)
             canvas.blit(k_title, (170 - k_title.get_width() // 2, 235))
+
             keys_str = " - ".join(map(str, payload["grid_keys"]))
             k_surf = prize_font.render(keys_str, True, CREAM_WHITE)
             canvas.blit(k_surf, (170 - k_surf.get_width() // 2, 340))
@@ -708,12 +693,14 @@ class ScratchCanvas:
                 (rect.right - 8, rect.bottom - 8),
                 (rect.centerx, rect.centery)
             ]
+
             scratched_count = 0
             for pt_x, pt_y in check_points:
                 if 0 <= pt_x < self.width and 0 <= pt_y < self.height:
                     pixel = self.foil_surface.get_at((pt_x, pt_y))
                     if pixel[3] == 0:
                         scratched_count += 1
+
             if scratched_count >= 3:
                 target["cleared"] = True
                 pygame.draw.rect(self.foil_surface, (0, 0, 0, 0), rect)
@@ -723,7 +710,6 @@ class ScratchCanvas:
 # ============================================================
 async def run_lottery(balance=1000):
     pygame.init()
-
     try:
         pygame.mixer.init(frequency=22050, size=-16, channels=1, buffer=512)
     except Exception:
@@ -770,8 +756,8 @@ async def run_lottery(balance=1000):
     prev_mouse_pos = None
     poker_chip_radius = 22
     frame_counter = 0
-
     running = True
+
     while running:
         frame_counter += 1
         mouse_pos = pygame.mouse.get_pos()
@@ -782,7 +768,6 @@ async def run_lottery(balance=1000):
                 break
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return bankroll.balance + cabinet.inserted_wager
-
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if current_mode == "VENDING_MODE":
                     action = cabinet.handle_input(mouse_pos, bankroll)
@@ -796,7 +781,6 @@ async def run_lottery(balance=1000):
                         scratch_canvas.reset_foil_for_targets(ticket_payload["scratch_targets"])
                         ticket_pos_x = 305
                         ticket_pos_y = 720
-
                 elif current_mode == "SCRATCH_MODE":
                     back_rect = pygame.Rect(725, 600 + cabinet.Y_SHIFT, 180, 45)
                     if back_rect.collidepoint(mouse_pos):
@@ -807,7 +791,6 @@ async def run_lottery(balance=1000):
                         pre_rendered_ticket = None
                         current_mode = "VENDING_MODE"
                         if sfx["chip"]: sfx["chip"].play()
-
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 prev_mouse_pos = None
 
@@ -835,6 +818,7 @@ async def run_lottery(balance=1000):
                         sfx["scrape"].play()
             else:
                 prev_mouse_pos = None
+
             scratch_canvas.audit_reveal_thresholds(ticket_payload["scratch_targets"])
 
         screen.fill(MAHOGANY)
@@ -846,6 +830,7 @@ async def run_lottery(balance=1000):
 
         pulse_alpha = math.sin(frame_counter * 0.08) * 40 + 215
         marquee_gold = (int(pulse_alpha), 180, 85)
+
         pygame.draw.rect(screen, CHARCOAL, (45, 20, 860, 45), 0, 4)
         pygame.draw.rect(screen, marquee_gold, (45, 20, 860, 45), 2, 4)
 
@@ -909,7 +894,6 @@ async def run_lottery(balance=1000):
                 pygame.draw.circle(screen, CREAM_WHITE, mouse_pos, int(poker_chip_radius * 0.55))
 
         particle_engine.update_and_draw(screen)
-
         pygame.display.flip()
         await asyncio.sleep(0)
         clock.tick(60)
@@ -918,5 +902,3 @@ async def run_lottery(balance=1000):
 
 if __name__ == "__main__":
     asyncio.run(run_lottery(1000))
-
-
