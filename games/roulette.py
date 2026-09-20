@@ -89,8 +89,10 @@ except Exception:
 
 WIDTH, HEIGHT = 980, 640
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Vintage Vegas Roulette - Perfect Layout")
+# NOTE: display is (re)configured inside run_*() below, not at import time.
+# Calling set_mode() here too caused repeated canvas resizes on startup
+# (once per game module imported by main.py), which breaks rendering
+# under pygbag/WebAssembly.
 
 clock = pygame.time.Clock()
 _GAME_TITLE = "Vintage Vegas Roulette - Perfect Layout"
