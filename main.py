@@ -1,7 +1,7 @@
 """
 THE TERMINAL CASINO - Main Lobby / Launcher
 =============================================
-Ties together all eight table games into a single game with one
+Ties together twelve table games into a single game with one
 shared chip balance. Run this file to play.
 
     python main.py
@@ -48,12 +48,12 @@ CARD_BG_HOVER = (66, 30, 16)
 
 # Use same font fallback approach as the games (emoji support + Georgia/Arial)
 FONT_OPTIONS = ("segoeuiemoji", "applecoloremoji", "notocoloremoji", "georgia", "arial")
-title_font = pygame.font.SysFont(FONT_OPTIONS, 46, bold=True)
-subtitle_font = pygame.font.SysFont(FONT_OPTIONS, 16)
+title_font = pygame.font.SysFont(FONT_OPTIONS, 42, bold=True)
+subtitle_font = pygame.font.SysFont(FONT_OPTIONS, 15)
 bank_font = pygame.font.SysFont(FONT_OPTIONS, 24, bold=True)
-card_title_font = pygame.font.SysFont(FONT_OPTIONS, 22, bold=True)
-card_sub_font = pygame.font.SysFont(FONT_OPTIONS, 13)
-hint_font = pygame.font.SysFont(FONT_OPTIONS, 15)
+card_title_font = pygame.font.SysFont(FONT_OPTIONS, 18, bold=True)
+card_sub_font = pygame.font.SysFont(FONT_OPTIONS, 12)
+hint_font = pygame.font.SysFont(FONT_OPTIONS, 14)
 button_font = pygame.font.SysFont(FONT_OPTIONS, 15, bold=True)
 
 # ----------------------------------------------------------------
@@ -121,10 +121,14 @@ def draw_loading_screen(message):
 draw_loading_screen("Loading the casino floor...")
 
 from games import (
+    baccarat,
+    big_six,
     blackjack,
     craps,
     keno,
+    lottery,
     mechanical_derby,
+    plinko,
     roulette,
     slots,
     ultimate_hold_em,
@@ -135,10 +139,22 @@ screen = pygame.display.set_mode((LOBBY_WIDTH, LOBBY_HEIGHT))
 pygame.display.set_caption("The Terminal Casino")
 
 # ----------------------------------------------------------------
-# Game catalog
+# Game catalog (12 Games Total)
 # ----------------------------------------------------------------
 
 GAMES = [
+    {
+        "title": "Baccarat",
+        "subtitle": "Punto Banco",
+        "run": baccarat.run_baccarat,
+        "accent": (180, 50, 80),
+    },
+    {
+        "title": "Big Six Wheel",
+        "subtitle": "Money Wheel",
+        "run": big_six.run_big_six,
+        "accent": (210, 140, 30),
+    },
     {
         "title": "Blackjack",
         "subtitle": "5-Spot Vegas Table",
@@ -158,10 +174,22 @@ GAMES = [
         "accent": (90, 140, 200),
     },
     {
+        "title": "Lottery",
+        "subtitle": "Daily Drawing Machine",
+        "run": lottery.run_lottery,
+        "accent": (70, 160, 120),
+    },
+    {
         "title": "Mechanical Derby",
         "subtitle": "Racehorse Wagering",
         "run": mechanical_derby.run_mechanical_derby,
         "accent": (170, 120, 60),
+    },
+    {
+        "title": "Plinko",
+        "subtitle": "Peg Drop Board",
+        "run": plinko.run_plinko,
+        "accent": (210, 80, 180),
     },
     {
         "title": "Roulette",
@@ -190,13 +218,13 @@ GAMES = [
 ]
 
 # ----------------------------------------------------------------
-# Lobby layout: 4 columns x 2 rows of game cards
+# Lobby layout: 4 columns x 3 rows of game cards
 # ----------------------------------------------------------------
 
-COLS, ROWS = 4, 2
-CARD_W, CARD_H = 230, 190
-GRID_MARGIN_X, GRID_TOP = 45, 195
-GAP_X, GAP_Y = 20, 22
+COLS, ROWS = 4, 3
+CARD_W, CARD_H = 230, 135
+GRID_MARGIN_X, GRID_TOP = 45, 175
+GAP_X, GAP_Y = 20, 16
 
 card_rects = []
 for i, game in enumerate(GAMES):
@@ -215,45 +243,69 @@ def draw_wood_panel(surface, rect):
 
 
 def draw_card_icon(surface, rect, index, accent):
-    cx, cy = rect.centerx, rect.top + 58
-    if index == 0:
-        pygame.draw.rect(surface, CREAM_WHITE, (cx - 26, cy - 18, 24, 36), 0, 3)
-        pygame.draw.rect(surface, CREAM_WHITE, (cx + 2, cy - 18, 24, 36), 0, 3)
-        pygame.draw.rect(surface, accent, (cx - 26, cy - 18, 24, 36), 2, 3)
-        pygame.draw.rect(surface, accent, (cx + 2, cy - 18, 24, 36), 2, 3)
-    elif index == 1:
-        pygame.draw.rect(surface, CREAM_WHITE, (cx - 24, cy - 16, 30, 30), 0, 5)
-        pygame.draw.rect(surface, accent, (cx - 24, cy - 16, 30, 30), 2, 5)
-        for dx, dy in [(-12, -2), (0, 0), (12, 2)]:
-            pygame.draw.circle(surface, CHARCOAL, (cx - 9 + dx, cy - 1 + dy), 2)
-    elif index == 2:
-        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 20)
-        pygame.draw.circle(surface, accent, (cx, cy), 20, 2)
-        t = card_sub_font.render("18", True, CHARCOAL)
+    cx, cy = rect.centerx, rect.top + 45
+    
+    if index == 0:  # Baccarat
+        pygame.draw.rect(surface, CREAM_WHITE, (cx - 20, cy - 14, 18, 28), 0, 3)
+        pygame.draw.rect(surface, CREAM_WHITE, (cx + 2, cy - 14, 18, 28), 0, 3)
+        pygame.draw.rect(surface, accent, (cx - 20, cy - 14, 18, 28), 2, 3)
+        pygame.draw.rect(surface, accent, (cx + 2, cy - 14, 18, 28), 2, 3)
+    elif index == 1:  # Big Six
+        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 18)
+        pygame.draw.circle(surface, accent, (cx, cy), 18, 2)
+        for angle_deg in range(0, 360, 45):
+            import math
+            rad = math.radians(angle_deg)
+            ex = cx + int(18 * math.cos(rad))
+            ey = cy + int(18 * math.sin(rad))
+            pygame.draw.line(surface, accent, (cx, cy), (ex, ey), 1)
+    elif index == 2:  # Blackjack
+        pygame.draw.rect(surface, CREAM_WHITE, (cx - 22, cy - 14, 20, 30), 0, 3)
+        pygame.draw.rect(surface, CREAM_WHITE, (cx + 2, cy - 14, 20, 30), 0, 3)
+        pygame.draw.rect(surface, accent, (cx - 22, cy - 14, 20, 30), 2, 3)
+        pygame.draw.rect(surface, accent, (cx + 2, cy - 14, 20, 30), 2, 3)
+    elif index == 3:  # Craps
+        pygame.draw.rect(surface, CREAM_WHITE, (cx - 20, cy - 12, 24, 24), 0, 4)
+        pygame.draw.rect(surface, accent, (cx - 20, cy - 12, 24, 24), 2, 4)
+        for dx, dy in [(-8, -2), (0, 0), (8, 2)]:
+            pygame.draw.circle(surface, CHARCOAL, (cx - 8 + dx, cy + dy), 2)
+    elif index == 4:  # Keno
+        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 16)
+        pygame.draw.circle(surface, accent, (cx, cy), 16, 2)
+        t = card_sub_font.render("80", True, CHARCOAL)
         surface.blit(t, (cx - t.get_width() // 2, cy - t.get_height() // 2))
-    elif index == 3:
-        pygame.draw.rect(surface, CREAM_WHITE, (cx - 30, cy - 8, 60, 16), 0, 3)
-        pygame.draw.rect(surface, accent, (cx - 30, cy - 8, 60, 16), 2, 3)
+    elif index == 5:  # Lottery
+        pygame.draw.circle(surface, CREAM_WHITE, (cx - 10, cy + 2), 10)
+        pygame.draw.circle(surface, CREAM_WHITE, (cx + 10, cy - 4), 12)
+        pygame.draw.circle(surface, accent, (cx - 10, cy + 2), 10, 2)
+        pygame.draw.circle(surface, accent, (cx + 10, cy - 4), 12, 2)
+    elif index == 6:  # Mechanical Derby
+        pygame.draw.rect(surface, CREAM_WHITE, (cx - 24, cy - 6, 48, 12), 0, 3)
+        pygame.draw.rect(surface, accent, (cx - 24, cy - 6, 48, 12), 2, 3)
         pygame.draw.polygon(
-            surface, accent, [(cx + 18, cy), (cx + 8, cy - 6), (cx + 8, cy + 6)]
+            surface, accent, [(cx + 14, cy), (cx + 6, cy - 5), (cx + 6, cy + 5)]
         )
-    elif index == 4:
-        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 22)
-        pygame.draw.circle(surface, accent, (cx, cy), 22, 2)
-        pygame.draw.circle(surface, accent, (cx, cy), 6)
-    elif index == 5:
-        pygame.draw.rect(surface, CREAM_WHITE, (cx - 28, cy - 16, 56, 32), 0, 4)
-        pygame.draw.rect(surface, accent, (cx - 28, cy - 16, 56, 32), 2, 4)
-        for lx in (cx - 9, cx + 9):
-            pygame.draw.line(surface, accent, (lx, cy - 16), (lx, cy + 16), 1)
-    elif index == 6:
-        pygame.draw.circle(surface, accent, (cx - 14, cy), 14, 3)
-        pygame.draw.circle(surface, accent, (cx + 14, cy), 14, 3)
-        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 14, 3)
-    else:
-        pygame.draw.rect(surface, CHARCOAL, (cx - 28, cy - 18, 56, 36), 0, 4)
-        pygame.draw.rect(surface, accent, (cx - 28, cy - 18, 56, 36), 2, 4)
-        pygame.draw.rect(surface, accent, (cx - 20, cy - 10, 40, 20), 1, 2)
+    elif index == 7:  # Plinko
+        for px, py in [(-12, -10), (0, -10), (12, -10), (-6, 2), (6, 2)]:
+            pygame.draw.circle(surface, accent, (cx + px, cy + py), 2)
+        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy - 2), 5)
+    elif index == 8:  # Roulette
+        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 18)
+        pygame.draw.circle(surface, accent, (cx, cy), 18, 2)
+        pygame.draw.circle(surface, accent, (cx, cy), 5)
+    elif index == 9:  # Slots
+        pygame.draw.rect(surface, CREAM_WHITE, (cx - 22, cy - 12, 44, 24), 0, 4)
+        pygame.draw.rect(surface, accent, (cx - 22, cy - 12, 44, 24), 2, 4)
+        for lx in (cx - 7, cx + 7):
+            pygame.draw.line(surface, accent, (lx, cy - 12), (lx, cy + 12), 1)
+    elif index == 10:  # Ultimate Hold 'Em
+        pygame.draw.circle(surface, accent, (cx - 10, cy), 11, 2)
+        pygame.draw.circle(surface, accent, (cx + 10, cy), 11, 2)
+        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 11, 2)
+    else:  # Video Poker
+        pygame.draw.rect(surface, CHARCOAL, (cx - 22, cy - 14, 44, 28), 0, 4)
+        pygame.draw.rect(surface, accent, (cx - 22, cy - 14, 44, 28), 2, 4)
+        pygame.draw.rect(surface, accent, (cx - 16, cy - 8, 32, 16), 1, 2)
 
 
 def draw_lobby(balance, hover_idx):
@@ -269,13 +321,13 @@ def draw_lobby(balance, hover_idx):
     )
 
     title_surf = title_font.render("THE TERMINAL CASINO", True, GOLD_TEXT)
-    screen.blit(title_surf, (LOBBY_WIDTH // 2 - title_surf.get_width() // 2, 68))
+    screen.blit(title_surf, (LOBBY_WIDTH // 2 - title_surf.get_width() // 2, 60))
     sub_surf = subtitle_font.render(
-        "Eight classic casino games in one - Try your luck!",
+        "Twelve classic casino games in one - Try your luck!",
         True,
         CREAM_WHITE,
     )
-    screen.blit(sub_surf, (LOBBY_WIDTH // 2 - sub_surf.get_width() // 2, 122))
+    screen.blit(sub_surf, (LOBBY_WIDTH // 2 - sub_surf.get_width() // 2, 112))
 
     bank_rect = pygame.Rect(30, 18, 260, 40)
     draw_wood_panel(screen, bank_rect)
@@ -301,14 +353,14 @@ def draw_lobby(balance, hover_idx):
         )
 
         accent = game["accent"]
-        accent_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.width - 6, 6)
+        accent_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.width - 6, 5)
         pygame.draw.rect(screen, accent, accent_rect, 0, 3)
 
         draw_card_icon(screen, rect, i, accent)
 
         t_surf = card_title_font.render(game["title"], True, CREAM_WHITE)
         screen.blit(
-            t_surf, (rect.centerx - t_surf.get_width() // 2, rect.bottom - 44)
+            t_surf, (rect.centerx - t_surf.get_width() // 2, rect.bottom - 32)
         )
 
     if balance <= 0:
@@ -317,14 +369,14 @@ def draw_lobby(balance, hover_idx):
             True,
             BRIGHT_RED,
         )
-        screen.blit(warn, (LOBBY_WIDTH // 2 - warn.get_width() // 2, LOBBY_HEIGHT - 34))
+        screen.blit(warn, (LOBBY_WIDTH // 2 - warn.get_width() // 2, LOBBY_HEIGHT - 30))
     else:
         hint = hint_font.render(
             "Click a table to play - press ESC inside any game to return here.",
             True,
             (170, 170, 160),
         )
-        screen.blit(hint, (LOBBY_WIDTH // 2 - hint.get_width() // 2, LOBBY_HEIGHT - 34))
+        screen.blit(hint, (LOBBY_WIDTH // 2 - hint.get_width() // 2, LOBBY_HEIGHT - 30))
 
     pygame.display.flip()
 
