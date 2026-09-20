@@ -6,6 +6,7 @@ VEGAS SCRATCH DISPENSER CABINET ENGINE (SYSTEM-ENTROPY HARD RANDOMIZATION)
 - Fixed 16-Letter CSPRNG Generation Loop (Guaranteed 16 Letters)
 - Dynamic Word Bank Generation with Weighted Vowel-to-Consonant Odds
 - True 4-Spot Mini Wheel Mechanics (Tier 4)
+- Exclusive Single-Game Payout Allocation (Tier 4 Fix)
 - Strict Ordered Sequence Safe Codes (Tier 5)
 """
 import asyncio
@@ -260,15 +261,36 @@ class TicketPayloadGenerator:
 
         elif tier == 4:
             payload["game1_num"] = sys_rand.randint(1, 20)
-            payload["game1_your"] = [sys_rand.randint(1, 20) for _ in range(3)]
             
-            # Game 2: Pure Fast Spot
-            fast_win = is_winner and (sys_rand.random() < 0.3)
-            payload["game2_fast"] = f"${total_payout}" if fast_win else "TRY AGAIN"
+            # Select EXACTLY ONE winning game if the ticket is marked as a winner
+            # 0 = Game 1 Win, 1 = Game 2 Win, 2 = Game 3 Win
+            winning_game_idx = sys_rand.choice([0, 1, 2]) if is_winner else -1
 
-            # Game 3: 4 Distinct Wheel Slices
-            wheel_payout = total_payout if (is_winner and not fast_win) else 0
-            wheel_spots = [wheel_payout, 0, 0, 0]
+            # --- GAME 1 ---
+            if is_winner and winning_game_idx == 0:
+                match_num = payload["game1_num"]
+                payload["game1_your"] = [match_num, sys_rand.randint(1, 20), sys_rand.randint(1, 20)]
+                sys_rand.shuffle(payload["game1_your"])
+            else:
+                your_nums = []
+                while len(your_nums) < 3:
+                    n = sys_rand.randint(1, 20)
+                    if n != payload["game1_num"] and n not in your_nums:
+                        your_nums.append(n)
+                payload["game1_your"] = your_nums
+
+            # --- GAME 2 ---
+            if is_winner and winning_game_idx == 1:
+                payload["game2_fast"] = f"${total_payout}"
+            else:
+                payload["game2_fast"] = "TRY AGAIN"
+
+            # --- GAME 3 ---
+            if is_winner and winning_game_idx == 2:
+                wheel_spots = [total_payout, 0, 0, 0]
+            else:
+                wheel_spots = [0, 0, 0, 0]
+
             sys_rand.shuffle(wheel_spots)
             payload["game3_wheel"] = wheel_spots
 
@@ -608,27 +630,40 @@ class TicketRenderer:
             canvas.blit(rules_txt, (170 - rules_txt.get_width() // 2, 505))
 
         elif tier == 4:
-            # --- GAME 1 ---
-            g1_rect = pygame.Rect(20, 85, 300, 100)
+            # --- GAME 1: LUCKY MATCH ---
+            g1_rect = pygame.Rect(20, 80, 300, 105)
             pygame.draw.rect(canvas, palette["text"], g1_rect, 2, 4)
             g1_txt = label_font.render("GAME 1: LUCKY MATCH", True, VINTAGE_GOLD)
-            canvas.blit(g1_txt, (30, 93))
+            canvas.blit(g1_txt, (30, 88))
 
-            nums_str = f"LUCKY: {payload['game1_num']}  |  YOUR: {payload['game1_your']}"
-            g1_surf = ticket_body_font.render(nums_str, True, palette["text"])
-            canvas.blit(g1_surf, (30, 130))
+            lucky_val = f"{payload['game1_num']:02d}"
+            l_hdr = label_font.render("LUCKY", True, CREAM_WHITE)
+            l_val = prize_font.render(lucky_val, True, VINTAGE_GOLD)
+            canvas.blit(l_hdr, (40, 110))
+            canvas.blit(l_val, (40, 130))
+
+            pygame.draw.line(canvas, CHARCOAL, (105, 110), (105, 170), 2)
+
+            y_hdr = label_font.render("YOUR NUMBERS", True, CREAM_WHITE)
+            canvas.blit(y_hdr, (120, 110))
+            
+            formatted_nums = "   ".join(f"{num:02d}" for num in payload['game1_your'])
+            y_val = prize_font.render(formatted_nums, True, CREAM_WHITE)
+            canvas.blit(y_val, (120, 135))
+
             payload["scratch_targets"].append({"id": "g1", "rect": g1_rect, "cleared": False})
 
-            # --- GAME 2 ---
+            # --- GAME 2: FAST SPOT REVEAL ---
             g2_rect = pygame.Rect(20, 195, 300, 75)
             pygame.draw.rect(canvas, palette["text"], g2_rect, 2, 4)
             g2_txt = label_font.render("GAME 2: FAST SPOT REVEAL", True, VINTAGE_GOLD)
             canvas.blit(g2_txt, (30, 203))
+            
             g2_surf = prize_font.render(payload["game2_fast"], True, BRIGHT_GREEN if payload["game2_fast"] != "TRY AGAIN" else palette["text"])
-            canvas.blit(g2_surf, (170 - g2_surf.get_width() // 2, 230))
+            canvas.blit(g2_surf, (170 - g2_surf.get_width() // 2, 232))
             payload["scratch_targets"].append({"id": "g2", "rect": g2_rect, "cleared": False})
 
-            # --- GAME 3 ---
+            # --- GAME 3: 4-SPOT MINI WHEEL ---
             g3_rect = pygame.Rect(20, 280, 300, 220)
             pygame.draw.rect(canvas, palette["text"], g3_rect, 2, 4)
             g3_txt = label_font.render("GAME 3: 4-SPOT MINI WHEEL", True, VINTAGE_GOLD)
@@ -637,15 +672,19 @@ class TicketRenderer:
             for i, val in enumerate(payload["game3_wheel"]):
                 col = i % 2
                 row = i // 2
-                wx = 40 + (col * 135)
-                wy = 320 + (row * 80)
-                spot_rect = pygame.Rect(wx, wy, 120, 65)
-                pygame.draw.rect(canvas, CHARCOAL, spot_rect, 0, 4)
-                pygame.draw.rect(canvas, VINTAGE_GOLD, spot_rect, 2, 4)
+                wx = 35 + (col * 135)
+                wy = 315 + (row * 85)
+                spot_rect = pygame.Rect(wx, wy, 125, 70)
+                
+                pygame.draw.rect(canvas, CHARCOAL, spot_rect, 0, 6)
+                pygame.draw.rect(canvas, VINTAGE_GOLD, spot_rect, 2, 6)
+
+                spot_lbl = label_font.render(f"SPOT {i+1}", True, VINTAGE_GOLD)
+                canvas.blit(spot_lbl, (spot_rect.centerx - spot_lbl.get_width() // 2, wy + 8))
 
                 val_str = f"${val}" if val > 0 else "$0"
                 val_surf = prize_font.render(val_str, True, BRIGHT_GREEN if val > 0 else FOIL_GRAY)
-                canvas.blit(val_surf, (spot_rect.centerx - val_surf.get_width() // 2, spot_rect.centery - val_surf.get_height() // 2))
+                canvas.blit(val_surf, (spot_rect.centerx - val_surf.get_width() // 2, wy + 32))
                 
                 payload["scratch_targets"].append({"id": f"g3_spot_{i}", "rect": spot_rect, "cleared": False})
 
