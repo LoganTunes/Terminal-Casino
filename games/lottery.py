@@ -265,25 +265,40 @@ class TicketPayloadGenerator:
             sys_rand.shuffle(payload["game3_wheel"])
 
         elif tier == 5:
+            # Generate 6 key digits
             player_keys = [sys_rand.randint(1, 9) for _ in range(6)]
             payload["grid_keys"] = player_keys
+
+            # Helper to check if a 2-digit code appears sequentially in player_keys
+            def contains_sequence(keys, code_str):
+                d1, d2 = int(code_str[0]), int(code_str[1])
+                for k in range(len(keys) - 1):
+                    if keys[k] == d1 and keys[k+1] == d2:
+                        return True
+                return False
+
             safes = []
             for i in range(3):
                 if is_winner and i == 0:
-                    d1 = sys_rand.choice(player_keys)
-                    d2 = sys_rand.choice(player_keys)
-                    code = f"{d1}{d2}"
+                    # Choose a slice of size 2 from player_keys to guarantee exact sequential match
+                    idx = sys_rand.randint(0, len(player_keys) - 2)
+                    code = f"{player_keys[idx]}{player_keys[idx+1]}"
                     payout = total_payout
                 else:
-                    non_keys = [d for d in range(1, 10) if d not in player_keys]
-                    if non_keys:
-                        d1 = sys_rand.choice(non_keys)
-                        d2 = sys_rand.randint(1, 9)
-                    else:
-                        d1, d2 = 0, 0
+                    # Pick a 2-digit code that does NOT appear sequentially anywhere in player_keys
+                    d1 = sys_rand.randint(1, 9)
+                    d2 = sys_rand.randint(1, 9)
                     code = f"{d1}{d2}"
+                    while contains_sequence(player_keys, code):
+                        d1 = sys_rand.randint(1, 9)
+                        d2 = sys_rand.randint(1, 9)
+                        code = f"{d1}{d2}"
                     payout = 0
-                safes.append({"code": code, "payout": payout})
+
+                # Store actual win state without pre-revealing total payout text on ticket
+                unlocked = contains_sequence(player_keys, code)
+                safes.append({"code": code, "payout": payout, "unlocked": unlocked})
+
             sys_rand.shuffle(safes)
             payload["safes"] = safes
 
@@ -626,8 +641,10 @@ class TicketRenderer:
                 pygame.draw.rect(canvas, VINTAGE_GOLD, s_rect, 2, 6)
                 code_txt = prize_font.render(safe["code"], True, CREAM_WHITE)
                 canvas.blit(code_txt, (s_rect.centerx - code_txt.get_width() // 2, 130))
-                p_str = f"${safe['payout']}" if safe['payout'] > 0 else "LOCKED"
-                p_txt = label_font.render(p_str, True, BRIGHT_GREEN if safe['payout'] > 0 else CHROME_SHADOW)
+                
+                # Removed payout text pre-spoiler underneath foil
+                p_str = f"${safe['payout']}" if safe["payout"] > 0 else "LOCKED"
+                p_txt = label_font.render(p_str, True, BRIGHT_GREEN if safe["payout"] > 0 else CHROME_SHADOW)
                 canvas.blit(p_txt, (s_rect.centerx - p_txt.get_width() // 2, 160))
                 payload["scratch_targets"].append({"id": f"safe_{i}", "rect": s_rect, "cleared": False})
 
