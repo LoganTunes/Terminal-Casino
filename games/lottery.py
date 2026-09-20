@@ -5,6 +5,8 @@ VEGAS SCRATCH DISPENSER CABINET ENGINE (SYSTEM-ENTROPY HARD RANDOMIZATION)
 - System Entropy Randomization (`secrets.SystemRandom()`)
 - Fixed 16-Letter CSPRNG Generation Loop (Guaranteed 16 Letters)
 - Dynamic Word Bank Generation with Weighted Vowel-to-Consonant Odds
+- True 4-Spot Mini Wheel Mechanics (Tier 4)
+- Strict Ordered Sequence Safe Codes (Tier 5)
 """
 import asyncio
 import math
@@ -224,7 +226,6 @@ class TicketPayloadGenerator:
             TARGET_LETTER_COUNT = 16
             while len(caller_letters) < TARGET_LETTER_COUNT:
                 remaining_chars = [c for c in alphabet if c not in caller_letters]
-                
                 if not remaining_chars:
                     break
 
@@ -260,16 +261,21 @@ class TicketPayloadGenerator:
         elif tier == 4:
             payload["game1_num"] = sys_rand.randint(1, 20)
             payload["game1_your"] = [sys_rand.randint(1, 20) for _ in range(3)]
-            payload["game2_fast"] = f"${total_payout}" if is_winner else "TRY AGAIN"
-            payload["game3_wheel"] = [total_payout if is_winner else 0, 0, 0, 0]
-            sys_rand.shuffle(payload["game3_wheel"])
+            
+            # Game 2: Pure Fast Spot
+            fast_win = is_winner and (sys_rand.random() < 0.3)
+            payload["game2_fast"] = f"${total_payout}" if fast_win else "TRY AGAIN"
+
+            # Game 3: 4 Distinct Wheel Slices
+            wheel_payout = total_payout if (is_winner and not fast_win) else 0
+            wheel_spots = [wheel_payout, 0, 0, 0]
+            sys_rand.shuffle(wheel_spots)
+            payload["game3_wheel"] = wheel_spots
 
         elif tier == 5:
-            # Generate 6 key digits
             player_keys = [sys_rand.randint(1, 9) for _ in range(6)]
             payload["grid_keys"] = player_keys
 
-            # Helper to check if a 2-digit code appears sequentially in player_keys
             def contains_sequence(keys, code_str):
                 d1, d2 = int(code_str[0]), int(code_str[1])
                 for k in range(len(keys) - 1):
@@ -280,12 +286,10 @@ class TicketPayloadGenerator:
             safes = []
             for i in range(3):
                 if is_winner and i == 0:
-                    # Choose a slice of size 2 from player_keys to guarantee exact sequential match
                     idx = sys_rand.randint(0, len(player_keys) - 2)
                     code = f"{player_keys[idx]}{player_keys[idx+1]}"
                     payout = total_payout
                 else:
-                    # Pick a 2-digit code that does NOT appear sequentially anywhere in player_keys
                     d1 = sys_rand.randint(1, 9)
                     d2 = sys_rand.randint(1, 9)
                     code = f"{d1}{d2}"
@@ -295,7 +299,6 @@ class TicketPayloadGenerator:
                         code = f"{d1}{d2}"
                     payout = 0
 
-                # Store actual win state without pre-revealing total payout text on ticket
                 unlocked = contains_sequence(player_keys, code)
                 safes.append({"code": code, "payout": payout, "unlocked": unlocked})
 
@@ -605,32 +608,46 @@ class TicketRenderer:
             canvas.blit(rules_txt, (170 - rules_txt.get_width() // 2, 505))
 
         elif tier == 4:
-            g1_rect = pygame.Rect(20, 90, 300, 110)
+            # --- GAME 1 ---
+            g1_rect = pygame.Rect(20, 85, 300, 100)
             pygame.draw.rect(canvas, palette["text"], g1_rect, 2, 4)
             g1_txt = label_font.render("GAME 1: LUCKY MATCH", True, VINTAGE_GOLD)
-            canvas.blit(g1_txt, (30, 98))
+            canvas.blit(g1_txt, (30, 93))
 
             nums_str = f"LUCKY: {payload['game1_num']}  |  YOUR: {payload['game1_your']}"
             g1_surf = ticket_body_font.render(nums_str, True, palette["text"])
-            canvas.blit(g1_surf, (30, 135))
+            canvas.blit(g1_surf, (30, 130))
             payload["scratch_targets"].append({"id": "g1", "rect": g1_rect, "cleared": False})
 
-            g2_rect = pygame.Rect(20, 215, 300, 80)
+            # --- GAME 2 ---
+            g2_rect = pygame.Rect(20, 195, 300, 75)
             pygame.draw.rect(canvas, palette["text"], g2_rect, 2, 4)
             g2_txt = label_font.render("GAME 2: FAST SPOT REVEAL", True, VINTAGE_GOLD)
-            canvas.blit(g2_txt, (30, 223))
-            g2_surf = prize_font.render(payload["game2_fast"], True, BRIGHT_GREEN if payload["is_winner"] else palette["text"])
-            canvas.blit(g2_surf, (170 - g2_surf.get_width() // 2, 250))
+            canvas.blit(g2_txt, (30, 203))
+            g2_surf = prize_font.render(payload["game2_fast"], True, BRIGHT_GREEN if payload["game2_fast"] != "TRY AGAIN" else palette["text"])
+            canvas.blit(g2_surf, (170 - g2_surf.get_width() // 2, 230))
             payload["scratch_targets"].append({"id": "g2", "rect": g2_rect, "cleared": False})
 
-            g3_rect = pygame.Rect(20, 310, 300, 180)
+            # --- GAME 3 ---
+            g3_rect = pygame.Rect(20, 280, 300, 220)
             pygame.draw.rect(canvas, palette["text"], g3_rect, 2, 4)
-            g3_txt = label_font.render("GAME 3: MINI WHEEL REVEAL", True, VINTAGE_GOLD)
-            canvas.blit(g3_txt, (30, 318))
-            p_str = f"PRIZE: ${payload['payout']}" if payload['is_winner'] else "TRY AGAIN"
-            g3_surf = prize_font.render(p_str, True, BRIGHT_GREEN if payload['is_winner'] else palette["text"])
-            canvas.blit(g3_surf, (170 - g3_surf.get_width() // 2, 390))
-            payload["scratch_targets"].append({"id": "g3", "rect": g3_rect, "cleared": False})
+            g3_txt = label_font.render("GAME 3: 4-SPOT MINI WHEEL", True, VINTAGE_GOLD)
+            canvas.blit(g3_txt, (30, 288))
+
+            for i, val in enumerate(payload["game3_wheel"]):
+                col = i % 2
+                row = i // 2
+                wx = 40 + (col * 135)
+                wy = 320 + (row * 80)
+                spot_rect = pygame.Rect(wx, wy, 120, 65)
+                pygame.draw.rect(canvas, CHARCOAL, spot_rect, 0, 4)
+                pygame.draw.rect(canvas, VINTAGE_GOLD, spot_rect, 2, 4)
+
+                val_str = f"${val}" if val > 0 else "$0"
+                val_surf = prize_font.render(val_str, True, BRIGHT_GREEN if val > 0 else FOIL_GRAY)
+                canvas.blit(val_surf, (spot_rect.centerx - val_surf.get_width() // 2, spot_rect.centery - val_surf.get_height() // 2))
+                
+                payload["scratch_targets"].append({"id": f"g3_spot_{i}", "rect": spot_rect, "cleared": False})
 
         elif tier == 5:
             s_lbl = ticket_body_font.render("COMBINATION SAFES", True, VINTAGE_GOLD)
@@ -642,7 +659,6 @@ class TicketRenderer:
                 code_txt = prize_font.render(safe["code"], True, CREAM_WHITE)
                 canvas.blit(code_txt, (s_rect.centerx - code_txt.get_width() // 2, 130))
                 
-                # Removed payout text pre-spoiler underneath foil
                 p_str = f"${safe['payout']}" if safe["payout"] > 0 else "LOCKED"
                 p_txt = label_font.render(p_str, True, BRIGHT_GREEN if safe["payout"] > 0 else CHROME_SHADOW)
                 canvas.blit(p_txt, (s_rect.centerx - p_txt.get_width() // 2, 160))
