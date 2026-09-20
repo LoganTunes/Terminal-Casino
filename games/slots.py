@@ -72,8 +72,10 @@ pygame.mixer.init(
 
 WIDTH, HEIGHT = 900, 720
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Vintage Vegas Slots - Pure Vector Build")
+# NOTE: display is (re)configured inside run_*() below, not at import time.
+# Calling set_mode() here too caused repeated canvas resizes on startup
+# (once per game module imported by main.py), which breaks rendering
+# under pygbag/WebAssembly.
 
 clock = pygame.time.Clock()
 _lobby_hint_font = pygame.font.SysFont("sans-serif", 20)
