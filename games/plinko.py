@@ -35,7 +35,6 @@ def generate_synth_sound(freq_list, duration_ms, wave_type="square", volume=0.3)
 
     return pygame.mixer.Sound(buffer=buffer)
 
-# Sound instances will be lazily created on first load
 snd_peg = None
 snd_win = None
 snd_lose = None
@@ -297,7 +296,6 @@ BUMP_FLASH_SECONDS = 0.1
 
 async def run_plinko(balance):
     init_sounds()
-    screen = pygame.display.get_surface()
     clock = pygame.time.Clock()
 
     font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
@@ -334,14 +332,16 @@ async def run_plinko(balance):
 
     running = True
     while running:
+        screen = pygame.display.get_surface()
+        if screen is None:
+            return balance
+
         dt = clock.tick(60) / 1000.0
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            # Treat window close (QUIT) identically to ESC return to prevent display context corruption
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 return balance
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    return balance
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
@@ -544,8 +544,6 @@ async def run_plinko(balance):
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 655))
 
         pygame.display.flip()
-
-        # Essential yield for WebAssembly / Pybag event loop
         await asyncio.sleep(0)
 
     return balance
