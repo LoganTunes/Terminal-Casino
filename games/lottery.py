@@ -919,3 +919,4 @@ async def run_lottery(balance=1000):
 if __name__ == "__main__":
     asyncio.run(run_lottery(1000))
 
+
