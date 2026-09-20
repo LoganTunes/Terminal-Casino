@@ -3,7 +3,8 @@ VEGAS SCRATCH DISPENSER CABINET ENGINE (SYSTEM-ENTROPY HARD RANDOMIZATION)
 ==========================================================================
 - Non-blocking Async Event Loop (`asyncio.sleep(0)`)
 - System Entropy Randomization (`secrets.SystemRandom()`)
-- Dynamic Dynamic Word Bank Generation with 1:8 Vowel-to-Consonant Odds
+- Fixed 16-Letter CSPRNG Generation Loop (Guaranteed 16 Letters)
+- Dynamic Word Bank Generation with Weighted Vowel-to-Consonant Odds
 """
 import asyncio
 import math
@@ -195,7 +196,6 @@ class TicketPayloadGenerator:
             payload["your_spots"] = your_spots
 
         elif tier == 3:
-            # Fully dynamic target words shuffle per ticket call
             target_words = sys_rand.sample(CASINO_WORDBANK, 8)
             payload["target_words"] = target_words
             per_letter_rate = max(10, wager // 4)
@@ -211,42 +211,44 @@ class TicketPayloadGenerator:
                 return [w for w in target_words if word_is_complete(w, letter_set)]
 
             def is_safe_to_add(char):
-                if char in caller_letters:
-                    return False
                 test_set = set(caller_letters + [char])
                 completed = current_completed_words(test_set)
-                if len(completed) > target_win_count:
-                    return False
-                return True
+                return len(completed) <= target_win_count
 
-            # If winning ticket, force letters for 1 winning word
             if is_winner:
                 winning_word = sys_rand.choice(target_words)
                 for char in winning_word:
                     if char not in caller_letters:
                         caller_letters.append(char)
 
-            # System Entropy Weighted Letter Picker (Vowels = 1, Consonants = 8)
-            while len(caller_letters) < 16:
-                candidates = []
-                weights = []
-                for c in alphabet:
-                    if is_safe_to_add(c):
-                        candidates.append(c)
-                        weights.append(1 if c in VOWELS else 8)
-
-                if not candidates:
+            TARGET_LETTER_COUNT = 16
+            while len(caller_letters) < TARGET_LETTER_COUNT:
+                remaining_chars = [c for c in alphabet if c not in caller_letters]
+                
+                if not remaining_chars:
                     break
 
-                # Hardware-random weighted sampling
-                chosen_char = sys_rand.choices(candidates, weights=weights, k=1)[0]
+                safe_candidates = []
+                safe_weights = []
+                unsafe_candidates = []
+
+                for c in remaining_chars:
+                    if is_safe_to_add(c):
+                        safe_candidates.append(c)
+                        safe_weights.append(1 if c in VOWELS else 8)
+                    else:
+                        unsafe_candidates.append(c)
+
+                if safe_candidates:
+                    chosen_char = sys_rand.choices(safe_candidates, weights=safe_weights, k=1)[0]
+                else:
+                    chosen_char = sys_rand.choice(unsafe_candidates)
+
                 caller_letters.append(chosen_char)
 
-            # Extra entropy shuffle on the final sequence
             sys_rand.shuffle(caller_letters)
-            payload["caller_letters"] = caller_letters[:16]
+            payload["caller_letters"] = caller_letters[:TARGET_LETTER_COUNT]
 
-            # Recalculate payout from final letter state
             actual_payout = 0
             for w in target_words:
                 if word_is_complete(w, set(payload["caller_letters"])):
