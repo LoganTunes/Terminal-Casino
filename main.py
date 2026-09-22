@@ -275,20 +275,16 @@ def draw_card_icon(surface, rect, index, accent):
         t = card_sub_font.render("80", True, CHARCOAL)
         surface.blit(t, (cx - t.get_width() // 2, cy - t.get_height() // 2))
     elif index == 5:  # Lottery Ticket Icon
-        # Outer ticket slip
         t_rect = pygame.Rect(cx - 22, cy - 15, 44, 30)
         pygame.draw.rect(surface, CREAM_WHITE, t_rect, 0, 4)
         pygame.draw.rect(surface, accent, t_rect, 2, 4)
 
-        # Header bar
         pygame.draw.rect(surface, accent, (cx - 19, cy - 12, 38, 7), 0, 2)
 
-        # 2x3 scratch-off boxes / number slots
         for gx in (-12, -2, 8):
             for gy in (0, 9):
                 pygame.draw.rect(surface, VINTAGE_GOLD, (cx + gx, cy + gy, 6, 6), 1)
 
-        # Side notch cutouts
         pygame.draw.circle(surface, CARD_BG, (cx - 22, cy), 4)
         pygame.draw.circle(surface, CARD_BG, (cx + 22, cy), 4)
         pygame.draw.circle(surface, accent, (cx - 22, cy), 4, 1)
@@ -300,9 +296,10 @@ def draw_card_icon(surface, rect, index, accent):
             surface, accent, [(cx + 14, cy), (cx + 6, cy - 5), (cx + 6, cy + 5)]
         )
     elif index == 7:  # Plinko
-        for px, py in [(-12, -10), (0, -10), (12, -10), (-6, 2), (6, 2)]:
+        # Inverted peg layout: wide at top, narrowing downward
+        for px, py in [(-12, -10), (0, -10), (12, -10), (-6, 0), (6, 0), (0, 10)]:
             pygame.draw.circle(surface, accent, (cx + px, cy + py), 2)
-        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy - 2), 5)
+        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy - 14), 4)
     elif index == 8:  # Roulette
         pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 18)
         pygame.draw.circle(surface, accent, (cx, cy), 18, 2)
