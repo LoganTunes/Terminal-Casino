@@ -274,11 +274,24 @@ def draw_card_icon(surface, rect, index, accent):
         pygame.draw.circle(surface, accent, (cx, cy), 16, 2)
         t = card_sub_font.render("80", True, CHARCOAL)
         surface.blit(t, (cx - t.get_width() // 2, cy - t.get_height() // 2))
-    elif index == 5:  # Lottery
-        pygame.draw.circle(surface, CREAM_WHITE, (cx - 10, cy + 2), 10)
-        pygame.draw.circle(surface, CREAM_WHITE, (cx + 10, cy - 4), 12)
-        pygame.draw.circle(surface, accent, (cx - 10, cy + 2), 10, 2)
-        pygame.draw.circle(surface, accent, (cx + 10, cy - 4), 12, 2)
+    elif index == 5:  # Lottery Ticket Icon
+        t_rect = pygame.Rect(cx - 20, cy - 14, 40, 28)
+        pygame.draw.rect(surface, CREAM_WHITE, t_rect, 0, 3)
+        pygame.draw.rect(surface, accent, t_rect, 2, 3)
+        
+        # Ticket banner
+        pygame.draw.rect(surface, accent, (cx - 18, cy - 12, 36, 6), 0, 1)
+        
+        # Scratch-off grid boxes
+        for gx in (-11, -1, 9):
+            for gy in (-1, 7):
+                pygame.draw.rect(surface, GOLD_SHADOW, (cx + gx - 3, cy + gy - 2, 6, 5), 1)
+
+        # Ticket side notches
+        pygame.draw.circle(surface, CARD_BG, (cx - 20, cy), 3)
+        pygame.draw.circle(surface, CARD_BG, (cx + 20, cy), 3)
+        pygame.draw.circle(surface, accent, (cx - 20, cy), 3, 1)
+        pygame.draw.circle(surface, accent, (cx + 20, cy), 3, 1)
     elif index == 6:  # Mechanical Derby
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 24, cy - 6, 48, 12), 0, 3)
         pygame.draw.rect(surface, accent, (cx - 24, cy - 6, 48, 12), 2, 3)
