@@ -5,6 +5,8 @@ import random
 import sys
 import pygame
 
+from games.ui_utils import draw_exit_button, is_exit_clicked
+
 # ============================================================
 #           CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
@@ -124,12 +126,7 @@ pygame.init()
 pygame.mixer.init(frequency=22050, size=-16, channels=1)
 
 WIDTH, HEIGHT = 950, 720
-# NOTE: display is (re)configured inside run_*() below, not at import time.
-# Calling set_mode() here too caused repeated canvas resizes on startup
-# (once per game module imported by main.py), which breaks rendering
-# under pygbag/WebAssembly.
 clock = pygame.time.Clock()
-_lobby_hint_font = pygame.font.SysFont(None, 20)
 
 # ============================================================
 #               PROCEDURAL AUDIO SYNTH DRIVERS
@@ -619,16 +616,19 @@ async def run_baccarat(starting_balance):
     running = True
     while running:
         current_time = pygame.time.get_ticks()
+        mouse_pos = pygame.mouse.get_pos()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = event.pos
 
+            # Handle Esc key & Touch/Mouse Mobile Exit
+            if is_exit_clicked(event):
+                running = False
+                break
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if game_stage == "BETTING":
                     for val, rect, c1, c2 in chip_selections:
                         if rect.collidepoint(mouse_pos):
@@ -857,8 +857,8 @@ async def run_baccarat(starting_balance):
             msg_surf = label_font.render(win_message, True, msg_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 622))
 
-        _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
-        screen.blit(_hint_surf, (15, HEIGHT - 25))
+        # DRAW MOBILE EXIT BUTTON
+        draw_exit_button(screen, mouse_pos)
 
         pygame.display.flip()
         clock.tick(60)
