@@ -273,14 +273,14 @@ async def run_big_six(balance):
                 # 2. Near-Miss Consolation Check for High-Tier Bets ($20, Joker, Flag)
                 for spot in ["JOKER", "FLAG", "$20"]:
                     if player_bets[spot] > 0 and spot in (prev_slot, next_slot) and spot != winning_slot:
-                        consolation = player_bets[spot] * 2  # Pays 2:1 near-miss bonus
+                        consolation = player_bets[spot] * 1  # Returns exact wager back
                         total_won += consolation
                         near_miss = True
 
                 if total_won > 0:
                     balance += total_won
                     if near_miss and player_bets[winning_slot] == 0:
-                        win_msg = f"⚡ NEAR MISS! Consolation payout! (Paid ${total_won})"
+                        win_msg = f"⚡ NEAR MISS! Wager returned! (Paid ${total_won})"
                     else:
                         win_msg = f"🎉 WINNER! Stopped on {winning_slot} (Paid ${total_won})!"
                     if snd_win: snd_win.play()
