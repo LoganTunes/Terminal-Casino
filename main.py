@@ -275,23 +275,24 @@ def draw_card_icon(surface, rect, index, accent):
         t = card_sub_font.render("80", True, CHARCOAL)
         surface.blit(t, (cx - t.get_width() // 2, cy - t.get_height() // 2))
     elif index == 5:  # Lottery Ticket Icon
-        t_rect = pygame.Rect(cx - 20, cy - 14, 40, 28)
-        pygame.draw.rect(surface, CREAM_WHITE, t_rect, 0, 3)
-        pygame.draw.rect(surface, accent, t_rect, 2, 3)
-        
-        # Ticket banner
-        pygame.draw.rect(surface, accent, (cx - 18, cy - 12, 36, 6), 0, 1)
-        
-        # Scratch-off grid boxes
-        for gx in (-11, -1, 9):
-            for gy in (-1, 7):
-                pygame.draw.rect(surface, GOLD_SHADOW, (cx + gx - 3, cy + gy - 2, 6, 5), 1)
+        # Outer ticket slip
+        t_rect = pygame.Rect(cx - 22, cy - 15, 44, 30)
+        pygame.draw.rect(surface, CREAM_WHITE, t_rect, 0, 4)
+        pygame.draw.rect(surface, accent, t_rect, 2, 4)
 
-        # Ticket side notches
-        pygame.draw.circle(surface, CARD_BG, (cx - 20, cy), 3)
-        pygame.draw.circle(surface, CARD_BG, (cx + 20, cy), 3)
-        pygame.draw.circle(surface, accent, (cx - 20, cy), 3, 1)
-        pygame.draw.circle(surface, accent, (cx + 20, cy), 3, 1)
+        # Header bar
+        pygame.draw.rect(surface, accent, (cx - 19, cy - 12, 38, 7), 0, 2)
+
+        # 2x3 scratch-off boxes / number slots
+        for gx in (-12, -2, 8):
+            for gy in (0, 9):
+                pygame.draw.rect(surface, VINTAGE_GOLD, (cx + gx, cy + gy, 6, 6), 1)
+
+        # Side notch cutouts
+        pygame.draw.circle(surface, CARD_BG, (cx - 22, cy), 4)
+        pygame.draw.circle(surface, CARD_BG, (cx + 22, cy), 4)
+        pygame.draw.circle(surface, accent, (cx - 22, cy), 4, 1)
+        pygame.draw.circle(surface, accent, (cx + 22, cy), 4, 1)
     elif index == 6:  # Mechanical Derby
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 24, cy - 6, 48, 12), 0, 3)
         pygame.draw.rect(surface, accent, (cx - 24, cy - 6, 48, 12), 2, 3)
@@ -440,7 +441,6 @@ async def main():
                         traceback.print_exc()
                         result = balance
 
-                    # FIX: Preserve bankroll if game returns None or unparseable value
                     if result is None:
                         print(f"Warning: {game['title']} returned None. Preserving bankroll.")
                     else:
@@ -455,7 +455,6 @@ async def main():
         draw_lobby(balance, hover_idx)
         clock.tick(60)
 
-        # Essential yield for WebAssembly / Pybag event loop
         await asyncio.sleep(0)
 
 
