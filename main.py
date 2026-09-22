@@ -12,6 +12,7 @@ function.
 
 import asyncio
 import json
+import math
 import os
 import sys
 import traceback
@@ -43,6 +44,7 @@ GOLD_SHADOW = (145, 105, 45)
 CREAM_WHITE = (247, 245, 230)
 CHARCOAL = (20, 20, 20)
 BRIGHT_RED = (190, 25, 25)
+JET_BLACK = (18, 18, 18)
 CARD_BG = (46, 20, 12)
 CARD_BG_HOVER = (66, 30, 16)
 
@@ -53,6 +55,7 @@ subtitle_font = pygame.font.SysFont(FONT_OPTIONS, 15)
 bank_font = pygame.font.SysFont(FONT_OPTIONS, 24, bold=True)
 card_title_font = pygame.font.SysFont(FONT_OPTIONS, 18, bold=True)
 card_sub_font = pygame.font.SysFont(FONT_OPTIONS, 12)
+icon_pip_font = pygame.font.SysFont(FONT_OPTIONS, 11, bold=True)
 hint_font = pygame.font.SysFont(FONT_OPTIONS, 14)
 button_font = pygame.font.SysFont(FONT_OPTIONS, 15, bold=True)
 
@@ -244,26 +247,47 @@ def draw_wood_panel(surface, rect):
 
 def draw_card_icon(surface, rect, index, accent):
     cx, cy = rect.centerx, rect.top + 45
-    
-    if index == 0:  # Baccarat
-        pygame.draw.rect(surface, CREAM_WHITE, (cx - 20, cy - 14, 18, 28), 0, 3)
-        pygame.draw.rect(surface, CREAM_WHITE, (cx + 2, cy - 14, 18, 28), 0, 3)
-        pygame.draw.rect(surface, accent, (cx - 20, cy - 14, 18, 28), 2, 3)
-        pygame.draw.rect(surface, accent, (cx + 2, cy - 14, 18, 28), 2, 3)
+
+    if index == 0:  # Baccarat - fanned 3-card spread with pips (punto banco hand)
+        fan_offsets = [(-16, 2, -12), (0, -4, 0), (16, 2, 12)]
+        for dx, dy, _tilt in fan_offsets:
+            card_w, card_h = 18, 26
+            fx, fy = cx + dx - card_w // 2, cy + dy - card_h // 2
+            pygame.draw.rect(surface, CREAM_WHITE, (fx, fy, card_w, card_h), 0, 3)
+            pygame.draw.rect(surface, accent, (fx, fy, card_w, card_h), 2, 3)
+        # small red pip diamonds on the centre card to read as a hand of cards
+        pip_cx, pip_cy = cx, cy - 4
+        for pdx, pdy in [(0, -6), (-5, 3), (5, 3)]:
+            pygame.draw.polygon(
+                surface,
+                BRIGHT_RED,
+                [
+                    (pip_cx + pdx, pip_cy + pdy - 3),
+                    (pip_cx + pdx + 3, pip_cy + pdy),
+                    (pip_cx + pdx, pip_cy + pdy + 3),
+                    (pip_cx + pdx - 3, pip_cy + pdy),
+                ],
+            )
     elif index == 1:  # Big Six
         pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 18)
         pygame.draw.circle(surface, accent, (cx, cy), 18, 2)
         for angle_deg in range(0, 360, 45):
-            import math
             rad = math.radians(angle_deg)
             ex = cx + int(18 * math.cos(rad))
             ey = cy + int(18 * math.sin(rad))
             pygame.draw.line(surface, accent, (cx, cy), (ex, ey), 1)
-    elif index == 2:  # Blackjack
-        pygame.draw.rect(surface, CREAM_WHITE, (cx - 22, cy - 14, 20, 30), 0, 3)
-        pygame.draw.rect(surface, CREAM_WHITE, (cx + 2, cy - 14, 20, 30), 0, 3)
-        pygame.draw.rect(surface, accent, (cx - 22, cy - 14, 20, 30), 2, 3)
-        pygame.draw.rect(surface, accent, (cx + 2, cy - 14, 20, 30), 2, 3)
+    elif index == 2:  # Blackjack - Ace + King, "21" pairing
+        card_w, card_h = 20, 30
+        left = pygame.Rect(cx - 22, cy - 15, card_w, card_h)
+        right = pygame.Rect(cx + 2, cy - 15, card_w, card_h)
+        pygame.draw.rect(surface, CREAM_WHITE, left, 0, 3)
+        pygame.draw.rect(surface, CREAM_WHITE, right, 0, 3)
+        pygame.draw.rect(surface, accent, left, 2, 3)
+        pygame.draw.rect(surface, accent, right, 2, 3)
+        a_txt = icon_pip_font.render("A", True, CHARCOAL)
+        k_txt = icon_pip_font.render("K", True, CHARCOAL)
+        surface.blit(a_txt, (left.centerx - a_txt.get_width() // 2, left.centery - a_txt.get_height() // 2))
+        surface.blit(k_txt, (right.centerx - k_txt.get_width() // 2, right.centery - k_txt.get_height() // 2))
     elif index == 3:  # Craps
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 20, cy - 12, 24, 24), 0, 4)
         pygame.draw.rect(surface, accent, (cx - 20, cy - 12, 24, 24), 2, 4)
@@ -289,30 +313,83 @@ def draw_card_icon(surface, rect, index, accent):
         pygame.draw.circle(surface, CARD_BG, (cx + 22, cy), 4)
         pygame.draw.circle(surface, accent, (cx - 22, cy), 4, 1)
         pygame.draw.circle(surface, accent, (cx + 22, cy), 4, 1)
-    elif index == 6:  # Mechanical Derby
-        pygame.draw.rect(surface, CREAM_WHITE, (cx - 24, cy - 6, 48, 12), 0, 3)
-        pygame.draw.rect(surface, accent, (cx - 24, cy - 6, 48, 12), 2, 3)
+    elif index == 6:  # Mechanical Derby - horse head silhouette
+        horse_points = [
+            (cx - 6, cy + 14),   # chest / bottom
+            (cx - 10, cy + 2),   # neck front
+            (cx - 6, cy - 10),   # jaw
+            (cx - 1, cy - 15),   # nose bridge
+            (cx + 6, cy - 16),   # nose tip
+            (cx + 5, cy - 11),   # under nose
+            (cx + 1, cy - 9),    # mouth
+            (cx - 1, cy - 4),    # throat
+            (cx + 6, cy - 2),    # mane back edge top
+            (cx + 10, cy + 6),   # mane back edge bottom
+            (cx + 4, cy + 10),   # back to neck
+            (cx + 2, cy + 16),   # bottom right
+        ]
+        pygame.draw.polygon(surface, CREAM_WHITE, horse_points)
+        pygame.draw.polygon(surface, accent, horse_points, 2)
+        # ear
         pygame.draw.polygon(
-            surface, accent, [(cx + 14, cy), (cx + 6, cy - 5), (cx + 6, cy + 5)]
+            surface,
+            accent,
+            [(cx - 2, cy - 12), (cx + 2, cy - 20), (cx + 4, cy - 12)],
+            1,
         )
+        # eye
+        pygame.draw.circle(surface, CHARCOAL, (cx, cy - 6), 1)
     elif index == 7:  # Plinko
         # Inverted peg layout: wide at top, narrowing downward
         for px, py in [(-12, -10), (0, -10), (12, -10), (-6, 0), (6, 0), (0, 10)]:
             pygame.draw.circle(surface, accent, (cx + px, cy + py), 2)
         pygame.draw.circle(surface, CREAM_WHITE, (cx, cy - 14), 4)
-    elif index == 8:  # Roulette
-        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 18)
-        pygame.draw.circle(surface, accent, (cx, cy), 18, 2)
-        pygame.draw.circle(surface, accent, (cx, cy), 5)
+    elif index == 8:  # Roulette - wedged wheel with ball
+        radius = 18
+        wedge_count = 10
+        for w in range(wedge_count):
+            start_ang = math.radians(w * (360 / wedge_count) - 90)
+            end_ang = math.radians((w + 1) * (360 / wedge_count) - 90)
+            points = [(cx, cy)]
+            steps = 4
+            for s in range(steps + 1):
+                ang = start_ang + (end_ang - start_ang) * (s / steps)
+                points.append(
+                    (cx + radius * math.cos(ang), cy + radius * math.sin(ang))
+                )
+            wedge_color = BRIGHT_RED if w % 2 == 0 else JET_BLACK
+            pygame.draw.polygon(surface, wedge_color, points)
+        pygame.draw.circle(surface, accent, (cx, cy), radius, 2)
+        pygame.draw.circle(surface, VINTAGE_GOLD, (cx, cy), 4)
+        # ball sitting on the rim
+        ball_ang = math.radians(-40)
+        bx = cx + (radius - 3) * math.cos(ball_ang)
+        by = cy + (radius - 3) * math.sin(ball_ang)
+        pygame.draw.circle(surface, CREAM_WHITE, (int(bx), int(by)), 3)
     elif index == 9:  # Slots
         pygame.draw.rect(surface, CREAM_WHITE, (cx - 22, cy - 12, 44, 24), 0, 4)
         pygame.draw.rect(surface, accent, (cx - 22, cy - 12, 44, 24), 2, 4)
         for lx in (cx - 7, cx + 7):
             pygame.draw.line(surface, accent, (lx, cy - 12), (lx, cy + 12), 1)
-    elif index == 10:  # Ultimate Hold 'Em
-        pygame.draw.circle(surface, accent, (cx - 10, cy), 11, 2)
-        pygame.draw.circle(surface, accent, (cx + 10, cy), 11, 2)
-        pygame.draw.circle(surface, CREAM_WHITE, (cx, cy), 11, 2)
+    elif index == 10:  # Ultimate Hold 'Em - stacked poker chip tower
+        chip_r = 14
+        for i, dy in enumerate((10, 2, -6)):
+            chip_cy = cy + dy
+            pygame.draw.ellipse(
+                surface, accent, (cx - chip_r, chip_cy - 5, chip_r * 2, 10)
+            )
+            pygame.draw.ellipse(
+                surface, CREAM_WHITE, (cx - chip_r, chip_cy - 5, chip_r * 2, 10), 2
+            )
+            for sx in range(-1, 2):
+                notch_x = cx + sx * (chip_r - 4)
+                pygame.draw.line(
+                    surface,
+                    CREAM_WHITE,
+                    (notch_x, chip_cy - 4),
+                    (notch_x, chip_cy - 1),
+                    2,
+                )
     else:  # Video Poker
         pygame.draw.rect(surface, CHARCOAL, (cx - 22, cy - 14, 44, 28), 0, 4)
         pygame.draw.rect(surface, accent, (cx - 22, cy - 14, 44, 28), 2, 4)
