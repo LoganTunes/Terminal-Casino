@@ -6,7 +6,7 @@ import sys
 import pygame
 
 # ============================================================
-#           CASINO MATH ENGINE & GAME LOGIC
+#            CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 SUITS = ["♥", "♦", "♣", "♠"]
@@ -124,10 +124,6 @@ pygame.init()
 pygame.mixer.init(frequency=22050, size=-16, channels=1)
 
 WIDTH, HEIGHT = 950, 720
-# NOTE: display is (re)configured inside run_*() below, not at import time.
-# Calling set_mode() here too caused repeated canvas resizes on startup
-# (once per game module imported by main.py), which breaks rendering
-# under pygbag/WebAssembly.
 clock = pygame.time.Clock()
 _lobby_hint_font = pygame.font.SysFont(None, 20)
 
@@ -622,8 +618,7 @@ async def run_baccarat(starting_balance):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -652,6 +647,7 @@ async def run_baccarat(starting_balance):
                             deck = create_deck()
                             p_cards, b_cards = process_baccarat_tableau(deck)
                             deal_order = build_deal_order(p_cards, b_cards)
+                            # Fix: Clear prior visual cards when transitioning to dealing
                             player_anim = []
                             banker_anim = []
                             deal_index = 0
@@ -668,6 +664,7 @@ async def run_baccarat(starting_balance):
                     if deal_btn_rect.collidepoint(
                         mouse_pos
                     ) or clear_btn_rect.collidepoint(mouse_pos):
+                        # Fix: Reset visual card hand lists when starting a new round
                         player_anim = []
                         banker_anim = []
                         deal_order = []
