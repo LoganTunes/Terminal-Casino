@@ -6,7 +6,7 @@ import sys
 import pygame
 
 # ============================================================
-#            CASINO MATH ENGINE & GAME LOGIC
+#           CASINO MATH ENGINE & GAME LOGIC
 # ============================================================
 
 SUITS = ["♥", "♦", "♣", "♠"]
@@ -124,6 +124,10 @@ pygame.init()
 pygame.mixer.init(frequency=22050, size=-16, channels=1)
 
 WIDTH, HEIGHT = 950, 720
+# NOTE: display is (re)configured inside run_*() below, not at import time.
+# Calling set_mode() here too caused repeated canvas resizes on startup
+# (once per game module imported by main.py), which breaks rendering
+# under pygbag/WebAssembly.
 clock = pygame.time.Clock()
 _lobby_hint_font = pygame.font.SysFont(None, 20)
 
@@ -613,13 +617,19 @@ async def run_baccarat(starting_balance):
     player_bets = {"PLAYER": 0, "BANKER": 0, "TIE": 0}
 
     running = True
+    _lobby_btn_label = "ESC: Return to Lobby"
+    _lobby_btn_text_surf = _lobby_hint_font.render(_lobby_btn_label, True, (230, 200, 140))
+    _lobby_btn_rect = pygame.Rect(15 - 8, (HEIGHT - 25) - 6, _lobby_btn_text_surf.get_width() + 16, _lobby_btn_text_surf.get_height() + 12)
     while running:
         current_time = pygame.time.get_ticks()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                pygame.quit()
+                sys.exit()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and _lobby_btn_rect.collidepoint(event.pos):
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
@@ -647,7 +657,6 @@ async def run_baccarat(starting_balance):
                             deck = create_deck()
                             p_cards, b_cards = process_baccarat_tableau(deck)
                             deal_order = build_deal_order(p_cards, b_cards)
-                            # Fix: Clear prior visual cards when transitioning to dealing
                             player_anim = []
                             banker_anim = []
                             deal_index = 0
@@ -664,7 +673,6 @@ async def run_baccarat(starting_balance):
                     if deal_btn_rect.collidepoint(
                         mouse_pos
                     ) or clear_btn_rect.collidepoint(mouse_pos):
-                        # Fix: Reset visual card hand lists when starting a new round
                         player_anim = []
                         banker_anim = []
                         deal_order = []
@@ -854,8 +862,11 @@ async def run_baccarat(starting_balance):
             msg_surf = label_font.render(win_message, True, msg_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 622))
 
-        _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
-        screen.blit(_hint_surf, (15, HEIGHT - 25))
+        _lobby_btn_hover = _lobby_btn_rect.collidepoint(pygame.mouse.get_pos())
+        _lobby_btn_bg = (70, 45, 25) if _lobby_btn_hover else (40, 25, 15)
+        pygame.draw.rect(screen, _lobby_btn_bg, _lobby_btn_rect, 0, 6)
+        pygame.draw.rect(screen, (200, 160, 90) if _lobby_btn_hover else (150, 110, 60), _lobby_btn_rect, 1, 6)
+        screen.blit(_lobby_btn_text_surf, (15, HEIGHT - 25))
 
         pygame.display.flip()
         clock.tick(60)
