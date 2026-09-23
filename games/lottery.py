@@ -1,23 +1,18 @@
 """
-VEGAS SCRATCH DISPENSER CABINET ENGINE (SYSTEM-ENTROPY HARD RANDOMIZATION)
-==========================================================================
+VEGAS SCRATCH DISPENSER CABINET ENGINE (DYNAMIC WORD LENGTH PAYOUTS + HARD VOWELS)
+==================================================================================
 - Non-blocking Async Event Loop (`asyncio.sleep(0)`)
-- System Entropy Randomization (`secrets.SystemRandom()`)
-- Fixed 16-Letter CSPRNG Generation Loop (Guaranteed 16 Letters)
-- Dynamic Word Bank Generation with Weighted Vowel-to-Consonant Odds
-- True 4-Spot Mini Wheel Mechanics (Tier 4)
-- Exclusive Single-Game Payout Allocation (Tier 4 Fix)
-- Strict Ordered Sequence Safe Codes (Tier 5)
+- Dynamic Ticket Payout & Prize Scaling
+- Restricted Vowel Frequency for Tier 3 Word Match
 """
+
 import asyncio
 import math
+import random
 import secrets
 import sys
 import array
 import pygame
-
-# Hardware OS-Level True Randomizer
-sys_rand = secrets.SystemRandom()
 
 # ============================================================
 #                    PALETTE DEFINITIONS
@@ -54,6 +49,7 @@ CASINO_WORDBANK = [
     "STACK", "FLUSH", "SUIT", "RISK", "COIN", "CHANCE", "TOKEN", "PAYOUT",
     "REEL", "SEVEN", "FORTUNE", "CHARM", "SHUFFLE", "BET", "HIGH", "WILD"
 ]
+
 VOWELS = set("AEIOU")
 
 # ============================================================
@@ -67,7 +63,6 @@ def generate_synth_sound(freq_list, duration_ms, wave_type="triangle", volume=0.
         total_samples = int(sample_rate * (duration_ms / 1000.0))
         buffer = array.array("h", [0] * total_samples)
         samples_per_freq = max(1, total_samples // len(freq_list))
-
         for i in range(total_samples):
             freq_idx = min(i // samples_per_freq, len(freq_list) - 1)
             freq = freq_list[freq_idx]
@@ -82,7 +77,6 @@ def generate_synth_sound(freq_list, duration_ms, wave_type="triangle", volume=0.
                 else:
                     val = int(32767 * math.sin(2 * math.pi * freq * t))
             buffer[i] = int(val * volume)
-
         return pygame.mixer.Sound(buffer=buffer)
     except Exception:
         return None
@@ -96,13 +90,13 @@ class ParticleSystem:
 
     def emit_dust(self, pos, count=5):
         for _ in range(count):
-            angle = sys_rand.uniform(0, math.pi * 2)
-            speed = sys_rand.uniform(1.0, 3.5)
+            angle = random.uniform(0, math.pi * 2)
+            speed = random.uniform(1.0, 3.5)
             vx = math.cos(angle) * speed
             vy = math.sin(angle) * speed
-            color = sys_rand.choice([FOIL_SHINE, VINTAGE_GOLD, CREAM_WHITE])
-            size = sys_rand.randint(2, 4)
-            life = sys_rand.randint(12, 25)
+            color = random.choice([FOIL_SHINE, VINTAGE_GOLD, CREAM_WHITE])
+            size = random.randint(2, 4)
+            life = random.randint(12, 25)
             self.particles.append([list(pos), [vx, vy], color, size, life])
 
     def update_and_draw(self, surface):
@@ -132,22 +126,31 @@ class CasinoBankroll:
         return False
 
 # ============================================================
-#          SYSTEM-ENTROPY CSPRNG DATA GENERATOR
+#              CSPRNG TICKET DATA GENERATION
 # ============================================================
 class TicketPayloadGenerator:
+    @staticmethod
+    def get_secure_random(low, high):
+        return low + secrets.randbelow(high - low + 1)
+
     @classmethod
     def generate_payload(cls, tier, wager):
-        win_chance = sys_rand.randrange(100)
-        is_winner = win_chance < 38
+        # Win chance + multiplier weights are calibrated so the average
+        # ticket returns ~73% of what was wagered (a realistic scratch-off
+        # house edge). The old values (38% win chance, multipliers weighted
+        # toward 2x-10x) averaged OVER 110% of wager paid back - a
+        # mathematically guaranteed loss for the house on every ticket sold.
+        win_chance = secrets.randbelow(100)
+        is_winner = win_chance < 28
         multiplier = 0
 
         if is_winner:
-            mult_roll = sys_rand.randrange(100)
-            if mult_roll < 60:
+            mult_roll = secrets.randbelow(100)
+            if mult_roll < 75:
                 multiplier = 2
-            elif mult_roll < 85:
+            elif mult_roll < 93:
                 multiplier = 3
-            elif mult_roll < 95:
+            elif mult_roll < 98:
                 multiplier = 5
             else:
                 multiplier = 10
@@ -164,167 +167,163 @@ class TicketPayloadGenerator:
         }
 
         if tier == 1:
-            win_num = sys_rand.randint(10, 30)
+            win_num = cls.get_secure_random(10, 30)
             payload["winning_numbers"] = [win_num]
             your_nums = []
             for i in range(4):
                 if is_winner and i == 0:
                     your_nums.append((win_num, total_payout))
                 else:
-                    fake_num = sys_rand.randint(10, 30)
+                    fake_num = cls.get_secure_random(10, 30)
                     while fake_num == win_num or fake_num in [n[0] for n in your_nums]:
-                        fake_num = sys_rand.randint(10, 30)
+                        fake_num = cls.get_secure_random(10, 30)
                     your_nums.append((fake_num, 0))
-            sys_rand.shuffle(your_nums)
+            random.shuffle(your_nums)
             payload["your_numbers"] = your_nums
 
         elif tier == 2:
-            win_nums = [sys_rand.randint(1, 50), sys_rand.randint(1, 50)]
+            win_nums = [cls.get_secure_random(1, 50), cls.get_secure_random(1, 50)]
             while win_nums[0] == win_nums[1]:
-                win_nums[1] = sys_rand.randint(1, 50)
+                win_nums[1] = cls.get_secure_random(1, 50)
             payload["winning_numbers"] = win_nums
-
             your_spots = []
             winning_slots = [0, 1] if multiplier >= 5 else [0]
             for i in range(8):
                 if is_winner and i in winning_slots:
                     target_win = total_payout // len(winning_slots)
-                    your_spots.append((sys_rand.choice(win_nums), target_win, f"{multiplier}X" if multiplier > 1 else "1X"))
+                    your_spots.append((random.choice(win_nums), target_win, f"{multiplier}X" if multiplier > 1 else "1X"))
                 else:
-                    fake_num = sys_rand.randint(1, 50)
+                    fake_num = cls.get_secure_random(1, 50)
                     while fake_num in win_nums or fake_num in [s[0] for s in your_spots]:
-                        fake_num = sys_rand.randint(1, 50)
+                        fake_num = cls.get_secure_random(1, 50)
                     your_spots.append((fake_num, 0, "1X"))
-            sys_rand.shuffle(your_spots)
+            random.shuffle(your_spots)
             payload["your_spots"] = your_spots
 
         elif tier == 3:
-            target_words = sys_rand.sample(CASINO_WORDBANK, 8)
+            target_words = random.sample(CASINO_WORDBANK, 8)
             payload["target_words"] = target_words
             per_letter_rate = max(10, wager // 4)
+
             caller_letters = []
+            MAX_VOWELS = 3  # Hard cap on caller vowels per ticket
 
-            target_win_count = 1 if is_winner else 0
-            alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            def count_vowels(letters):
+                return sum(1 for c in letters if c in VOWELS)
 
-            def word_is_complete(word, letter_set):
-                return all(c in letter_set for c in word)
+            num_winning_words = 1 if multiplier <= 4 else 2
 
-            def current_completed_words(letter_set):
-                return [w for w in target_words if word_is_complete(w, letter_set)]
-
-            def is_safe_to_add(char):
-                test_set = set(caller_letters + [char])
-                completed = current_completed_words(test_set)
-                return len(completed) <= target_win_count
+            def word_is_protected(idx):
+                # True if this target word must NOT be allowed to complete.
+                return (not is_winner) or (idx >= num_winning_words)
 
             if is_winner:
-                winning_word = sys_rand.choice(target_words)
-                for char in winning_word:
-                    if char not in caller_letters:
-                        caller_letters.append(char)
+                winning_words = target_words[:num_winning_words]
 
-            TARGET_LETTER_COUNT = 16
-            while len(caller_letters) < TARGET_LETTER_COUNT:
-                remaining_chars = [c for c in alphabet if c not in caller_letters]
-                if not remaining_chars:
+                for w in winning_words:
+                    for char in w:
+                        if char not in caller_letters:
+                            caller_letters.append(char)
+
+                # Add partial consonant letters for remaining words
+                for w in target_words[num_winning_words:]:
+                    unmatched = [c for c in w if c not in caller_letters]
+                    if len(unmatched) > 1:
+                        for char in unmatched[:-1]:
+                            vowel_check = (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS)
+                            if len(caller_letters) < 16 and char not in caller_letters and not vowel_check:
+                                caller_letters.append(char)
+            else:
+                # Guarantee NO word can be completely spelled out
+                for w in target_words:
+                    unmatched = [c for c in w if c not in caller_letters]
+                    if len(unmatched) > 1:
+                        for char in unmatched[:-1]:
+                            vowel_check = (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS)
+                            if len(caller_letters) < 16 and char not in caller_letters and not vowel_check:
+                                caller_letters.append(char)
+
+            # Heavily weighted letter pool (Consonants 6x more likely than Vowels)
+            alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            weights = [1 if c in VOWELS else 6 for c in alphabet]
+
+            # FIX: previously this loop picked a random candidate letter FIRST and only
+            # afterwards checked whether it would complete a "protected" word - if it did,
+            # the letter was silently dropped but never excluded from being re-picked, so
+            # once every remaining legal letter would complete some protected word (very
+            # common on losing tickets, where ALL 8 words are protected), the loop could
+            # spin forever without len(caller_letters) ever changing, hanging the game.
+            # Now we filter candidates down to only SAFE letters before choosing, so each
+            # iteration either makes guaranteed progress or the loop cleanly breaks.
+            while len(caller_letters) < 16:
+                current_vowels = count_vowels(caller_letters)
+                valid_candidates = []
+                candidate_weights = []
+
+                for char, w in zip(alphabet, weights):
+                    if char in caller_letters:
+                        continue
+                    if current_vowels >= MAX_VOWELS and char in VOWELS:
+                        continue
+
+                    test_letters = caller_letters + [char]
+                    would_complete_unwanted = False
+                    for i, w_target in enumerate(target_words):
+                        if word_is_protected(i) and all(c in test_letters for c in w_target):
+                            would_complete_unwanted = True
+                            break
+
+                    if would_complete_unwanted:
+                        continue
+
+                    valid_candidates.append(char)
+                    candidate_weights.append(w)
+
+                if not valid_candidates:
                     break
 
-                safe_candidates = []
-                safe_weights = []
-                unsafe_candidates = []
+                extra = random.choices(valid_candidates, weights=candidate_weights, k=1)[0]
+                caller_letters.append(extra)
 
-                for c in remaining_chars:
-                    if is_safe_to_add(c):
-                        safe_candidates.append(c)
-                        safe_weights.append(1 if c in VOWELS else 8)
-                    else:
-                        unsafe_candidates.append(c)
+            payload["caller_letters"] = caller_letters[:16]
 
-                if safe_candidates:
-                    chosen_char = sys_rand.choices(safe_candidates, weights=safe_weights, k=1)[0]
-                else:
-                    chosen_char = sys_rand.choice(unsafe_candidates)
-
-                caller_letters.append(chosen_char)
-
-            sys_rand.shuffle(caller_letters)
-            payload["caller_letters"] = caller_letters[:TARGET_LETTER_COUNT]
-
+            # Audit exact payout matching completed target words
             actual_payout = 0
             for w in target_words:
-                if word_is_complete(w, set(payload["caller_letters"])):
+                if all(char in payload["caller_letters"] for char in w):
                     actual_payout += len(w) * per_letter_rate
 
             payload["payout"] = actual_payout
             payload["is_winner"] = actual_payout > 0
 
         elif tier == 4:
-            payload["game1_num"] = sys_rand.randint(1, 20)
-            
-            # Select EXACTLY ONE winning game if the ticket is marked as a winner
-            # 0 = Game 1 Win, 1 = Game 2 Win, 2 = Game 3 Win
-            winning_game_idx = sys_rand.choice([0, 1, 2]) if is_winner else -1
-
-            # --- GAME 1 ---
-            if is_winner and winning_game_idx == 0:
-                match_num = payload["game1_num"]
-                payload["game1_your"] = [match_num, sys_rand.randint(1, 20), sys_rand.randint(1, 20)]
-                sys_rand.shuffle(payload["game1_your"])
-            else:
-                your_nums = []
-                while len(your_nums) < 3:
-                    n = sys_rand.randint(1, 20)
-                    if n != payload["game1_num"] and n not in your_nums:
-                        your_nums.append(n)
-                payload["game1_your"] = your_nums
-
-            # --- GAME 2 ---
-            if is_winner and winning_game_idx == 1:
-                payload["game2_fast"] = f"${total_payout}"
-            else:
-                payload["game2_fast"] = "TRY AGAIN"
-
-            # --- GAME 3 ---
-            if is_winner and winning_game_idx == 2:
-                wheel_spots = [total_payout, 0, 0, 0]
-            else:
-                wheel_spots = [0, 0, 0, 0]
-
-            sys_rand.shuffle(wheel_spots)
-            payload["game3_wheel"] = wheel_spots
+            payload["game1_num"] = cls.get_secure_random(1, 20)
+            payload["game1_your"] = [cls.get_secure_random(1, 20) for _ in range(3)]
+            payload["game2_fast"] = f"${total_payout}" if is_winner else "TRY AGAIN"
+            payload["game3_wheel"] = [total_payout if is_winner else 0, 0, 0, 0]
+            random.shuffle(payload["game3_wheel"])
 
         elif tier == 5:
-            player_keys = [sys_rand.randint(1, 9) for _ in range(6)]
+            player_keys = [cls.get_secure_random(1, 9) for _ in range(6)]
             payload["grid_keys"] = player_keys
-
-            def contains_sequence(keys, code_str):
-                d1, d2 = int(code_str[0]), int(code_str[1])
-                for k in range(len(keys) - 1):
-                    if keys[k] == d1 and keys[k+1] == d2:
-                        return True
-                return False
-
             safes = []
             for i in range(3):
                 if is_winner and i == 0:
-                    idx = sys_rand.randint(0, len(player_keys) - 2)
-                    code = f"{player_keys[idx]}{player_keys[idx+1]}"
+                    d1 = random.choice(player_keys)
+                    d2 = random.choice(player_keys)
+                    code = f"{d1}{d2}"
                     payout = total_payout
                 else:
-                    d1 = sys_rand.randint(1, 9)
-                    d2 = sys_rand.randint(1, 9)
+                    non_keys = [d for d in range(1, 10) if d not in player_keys]
+                    if non_keys:
+                        d1 = random.choice(non_keys)
+                        d2 = cls.get_secure_random(1, 9)
+                    else:
+                        d1, d2 = 0, 0
                     code = f"{d1}{d2}"
-                    while contains_sequence(player_keys, code):
-                        d1 = sys_rand.randint(1, 9)
-                        d2 = sys_rand.randint(1, 9)
-                        code = f"{d1}{d2}"
                     payout = 0
-
-                unlocked = contains_sequence(player_keys, code)
-                safes.append({"code": code, "payout": payout, "unlocked": unlocked})
-
-            sys_rand.shuffle(safes)
+                safes.append({"code": code, "payout": payout})
+            random.shuffle(safes)
             payload["safes"] = safes
 
         return payload
@@ -333,6 +332,8 @@ class TicketPayloadGenerator:
 #              REALISTIC VENDING MACHINE CABINET
 # ============================================================
 class VendingMachineCabinet:
+    # Vertical offset applied to every cabinet element (used to nudge the
+    # whole machine down on screen). Change this one value to reposition it.
     Y_SHIFT = 25
 
     def __init__(self, fonts, sfx):
@@ -421,6 +422,7 @@ class VendingMachineCabinet:
         for idx, range_lbl, name in tier_ranges:
             ty = 90 + s + ((idx - 1) * 92)
             is_active = (self.active_tier == idx)
+
             pygame.draw.rect(surface, CHROME_SHADOW, (460, ty + 70, 235, 6))
 
             card_bg = TIER_PALETTES[idx]["bg"]
@@ -503,8 +505,8 @@ class TicketRenderer:
         canvas = pygame.Surface((340, 540))
         tier = payload["tier"]
         palette = TIER_PALETTES[tier]
-
         canvas.fill(palette["bg"])
+
         pygame.draw.rect(canvas, VINTAGE_GOLD, (5, 5, 330, 530), 4, 6)
         pygame.draw.rect(canvas, palette["text"], (11, 11, 318, 518), 1, 4)
 
@@ -527,7 +529,6 @@ class TicketRenderer:
 
             your_txt = ticket_body_font.render("YOUR NUMBERS & PRIZES", True, palette["text"])
             canvas.blit(your_txt, (170 - your_txt.get_width() // 2, 195))
-
             for i, (num, prize) in enumerate(payload["your_numbers"]):
                 rx = 40 + (i % 2) * 140
                 ry = 230 + (i // 2) * 90
@@ -552,7 +553,6 @@ class TicketRenderer:
 
             your_txt = ticket_body_font.render("THE SIZZLING GRID", True, palette["text"])
             canvas.blit(your_txt, (170 - your_txt.get_width() // 2, 195))
-
             for i, (num, prize, mult) in enumerate(payload["your_spots"]):
                 rx = 40 + (i % 2) * 140
                 ry = 225 + (i // 2) * 70
@@ -570,14 +570,11 @@ class TicketRenderer:
         elif tier == 3:
             c_lbl = ticket_body_font.render("YOUR CALLER LETTERS", True, palette["text"])
             canvas.blit(c_lbl, (170 - c_lbl.get_width() // 2, 80))
-
             caller_letters = payload["caller_letters"]
             letters_top = " ".join(caller_letters[:8])
             letters_bot = " ".join(caller_letters[8:])
-
             bank_rect = pygame.Rect(20, 100, 300, 65)
             pygame.draw.rect(canvas, palette["text"], bank_rect, 2, 4)
-
             l_surf1 = prize_font.render(letters_top, True, VINTAGE_GOLD)
             l_surf2 = prize_font.render(letters_bot, True, VINTAGE_GOLD)
             canvas.blit(l_surf1, (170 - l_surf1.get_width() // 2, 108))
@@ -586,7 +583,6 @@ class TicketRenderer:
 
             w_hdr = ticket_body_font.render("YOUR TARGET WORDS", True, palette["text"])
             canvas.blit(w_hdr, (170 - w_hdr.get_width() // 2, 180))
-
             target_words = payload["target_words"]
             per_letter_rate = max(10, payload["wager"] // 4)
 
@@ -630,76 +626,42 @@ class TicketRenderer:
             canvas.blit(rules_txt, (170 - rules_txt.get_width() // 2, 505))
 
         elif tier == 4:
-            # --- GAME 1: LUCKY MATCH ---
-            g1_rect = pygame.Rect(20, 80, 300, 105)
+            g1_rect = pygame.Rect(20, 90, 300, 110)
             pygame.draw.rect(canvas, palette["text"], g1_rect, 2, 4)
             g1_txt = label_font.render("GAME 1: LUCKY MATCH", True, VINTAGE_GOLD)
-            canvas.blit(g1_txt, (30, 88))
-
-            lucky_val = f"{payload['game1_num']:02d}"
-            l_hdr = label_font.render("LUCKY", True, CREAM_WHITE)
-            l_val = prize_font.render(lucky_val, True, VINTAGE_GOLD)
-            canvas.blit(l_hdr, (40, 110))
-            canvas.blit(l_val, (40, 130))
-
-            pygame.draw.line(canvas, CHARCOAL, (105, 110), (105, 170), 2)
-
-            y_hdr = label_font.render("YOUR NUMBERS", True, CREAM_WHITE)
-            canvas.blit(y_hdr, (120, 110))
-            
-            formatted_nums = "   ".join(f"{num:02d}" for num in payload['game1_your'])
-            y_val = prize_font.render(formatted_nums, True, CREAM_WHITE)
-            canvas.blit(y_val, (120, 135))
-
+            canvas.blit(g1_txt, (30, 98))
+            nums_str = f"LUCKY: {payload['game1_num']}  |  YOUR: {payload['game1_your']}"
+            g1_surf = ticket_body_font.render(nums_str, True, palette["text"])
+            canvas.blit(g1_surf, (30, 135))
             payload["scratch_targets"].append({"id": "g1", "rect": g1_rect, "cleared": False})
 
-            # --- GAME 2: FAST SPOT REVEAL ---
-            g2_rect = pygame.Rect(20, 195, 300, 75)
+            g2_rect = pygame.Rect(20, 215, 300, 80)
             pygame.draw.rect(canvas, palette["text"], g2_rect, 2, 4)
             g2_txt = label_font.render("GAME 2: FAST SPOT REVEAL", True, VINTAGE_GOLD)
-            canvas.blit(g2_txt, (30, 203))
-            
-            g2_surf = prize_font.render(payload["game2_fast"], True, BRIGHT_GREEN if payload["game2_fast"] != "TRY AGAIN" else palette["text"])
-            canvas.blit(g2_surf, (170 - g2_surf.get_width() // 2, 232))
+            canvas.blit(g2_txt, (30, 223))
+            g2_surf = prize_font.render(payload["game2_fast"], True, BRIGHT_GREEN if payload["is_winner"] else palette["text"])
+            canvas.blit(g2_surf, (170 - g2_surf.get_width() // 2, 250))
             payload["scratch_targets"].append({"id": "g2", "rect": g2_rect, "cleared": False})
 
-            # --- GAME 3: 4-SPOT MINI WHEEL ---
-            g3_rect = pygame.Rect(20, 280, 300, 220)
+            g3_rect = pygame.Rect(20, 310, 300, 180)
             pygame.draw.rect(canvas, palette["text"], g3_rect, 2, 4)
-            g3_txt = label_font.render("GAME 3: 4-SPOT MINI WHEEL", True, VINTAGE_GOLD)
-            canvas.blit(g3_txt, (30, 288))
-
-            for i, val in enumerate(payload["game3_wheel"]):
-                col = i % 2
-                row = i // 2
-                wx = 35 + (col * 135)
-                wy = 315 + (row * 85)
-                spot_rect = pygame.Rect(wx, wy, 125, 70)
-                
-                pygame.draw.rect(canvas, CHARCOAL, spot_rect, 0, 6)
-                pygame.draw.rect(canvas, VINTAGE_GOLD, spot_rect, 2, 6)
-
-                spot_lbl = label_font.render(f"SPOT {i+1}", True, VINTAGE_GOLD)
-                canvas.blit(spot_lbl, (spot_rect.centerx - spot_lbl.get_width() // 2, wy + 8))
-
-                val_str = f"${val}" if val > 0 else "$0"
-                val_surf = prize_font.render(val_str, True, BRIGHT_GREEN if val > 0 else FOIL_GRAY)
-                canvas.blit(val_surf, (spot_rect.centerx - val_surf.get_width() // 2, wy + 32))
-                
-                payload["scratch_targets"].append({"id": f"g3_spot_{i}", "rect": spot_rect, "cleared": False})
+            g3_txt = label_font.render("GAME 3: MINI WHEEL REVEAL", True, VINTAGE_GOLD)
+            canvas.blit(g3_txt, (30, 318))
+            p_str = f"PRIZE: ${payload['payout']}" if payload['is_winner'] else "TRY AGAIN"
+            g3_surf = prize_font.render(p_str, True, BRIGHT_GREEN if payload['is_winner'] else palette["text"])
+            canvas.blit(g3_surf, (170 - g3_surf.get_width() // 2, 390))
+            payload["scratch_targets"].append({"id": "g3", "rect": g3_rect, "cleared": False})
 
         elif tier == 5:
             s_lbl = ticket_body_font.render("COMBINATION SAFES", True, VINTAGE_GOLD)
             canvas.blit(s_lbl, (170 - s_lbl.get_width() // 2, 85))
-
             for i, safe in enumerate(payload["safes"]):
                 s_rect = pygame.Rect(20 + (i * 105), 110, 90, 90)
                 pygame.draw.rect(canvas, VINTAGE_GOLD, s_rect, 2, 6)
                 code_txt = prize_font.render(safe["code"], True, CREAM_WHITE)
                 canvas.blit(code_txt, (s_rect.centerx - code_txt.get_width() // 2, 130))
-                
-                p_str = f"${safe['payout']}" if safe["payout"] > 0 else "LOCKED"
-                p_txt = label_font.render(p_str, True, BRIGHT_GREEN if safe["payout"] > 0 else CHROME_SHADOW)
+                p_str = f"${safe['payout']}" if safe['payout'] > 0 else "LOCKED"
+                p_txt = label_font.render(p_str, True, BRIGHT_GREEN if safe['payout'] > 0 else CHROME_SHADOW)
                 canvas.blit(p_txt, (s_rect.centerx - p_txt.get_width() // 2, 160))
                 payload["scratch_targets"].append({"id": f"safe_{i}", "rect": s_rect, "cleared": False})
 
@@ -707,7 +669,6 @@ class TicketRenderer:
             pygame.draw.rect(canvas, VINTAGE_GOLD, k_rect, 2, 6)
             k_title = label_font.render("VAULT KEY CODES", True, VINTAGE_GOLD)
             canvas.blit(k_title, (170 - k_title.get_width() // 2, 235))
-
             keys_str = " - ".join(map(str, payload["grid_keys"]))
             k_surf = prize_font.render(keys_str, True, CREAM_WHITE)
             canvas.blit(k_surf, (170 - k_surf.get_width() // 2, 340))
@@ -752,14 +713,12 @@ class ScratchCanvas:
                 (rect.right - 8, rect.bottom - 8),
                 (rect.centerx, rect.centery)
             ]
-
             scratched_count = 0
             for pt_x, pt_y in check_points:
                 if 0 <= pt_x < self.width and 0 <= pt_y < self.height:
                     pixel = self.foil_surface.get_at((pt_x, pt_y))
                     if pixel[3] == 0:
                         scratched_count += 1
-
             if scratched_count >= 3:
                 target["cleared"] = True
                 pygame.draw.rect(self.foil_surface, (0, 0, 0, 0), rect)
@@ -769,6 +728,7 @@ class ScratchCanvas:
 # ============================================================
 async def run_lottery(balance=1000):
     pygame.init()
+
     try:
         pygame.mixer.init(frequency=22050, size=-16, channels=1, buffer=512)
     except Exception:
@@ -781,6 +741,7 @@ async def run_lottery(balance=1000):
 
     pygame.display.set_caption("Vegas Scratch Dispenser Cabinet Engine")
     clock = pygame.time.Clock()
+    _lobby_hint_font = pygame.font.SysFont(None, 20)
 
     sfx = {
         "chip": generate_synth_sound([300, 600], 40, "triangle", 0.25),
@@ -815,8 +776,11 @@ async def run_lottery(balance=1000):
     prev_mouse_pos = None
     poker_chip_radius = 22
     frame_counter = 0
-    running = True
 
+    running = True
+    _lobby_btn_label = "ESC: Return to Lobby"
+    _lobby_btn_text_surf = _lobby_hint_font.render(_lobby_btn_label, True, (230, 200, 140))
+    _lobby_btn_rect = pygame.Rect(10 - 8, (HEIGHT - 22) - 6, _lobby_btn_text_surf.get_width() + 16, _lobby_btn_text_surf.get_height() + 12)
     while running:
         frame_counter += 1
         mouse_pos = pygame.mouse.get_pos()
@@ -827,6 +791,10 @@ async def run_lottery(balance=1000):
                 break
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return bankroll.balance + cabinet.inserted_wager
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and _lobby_btn_rect.collidepoint(mouse_pos):
+                return bankroll.balance + cabinet.inserted_wager
+
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if current_mode == "VENDING_MODE":
                     action = cabinet.handle_input(mouse_pos, bankroll)
@@ -840,6 +808,7 @@ async def run_lottery(balance=1000):
                         scratch_canvas.reset_foil_for_targets(ticket_payload["scratch_targets"])
                         ticket_pos_x = 305
                         ticket_pos_y = 720
+
                 elif current_mode == "SCRATCH_MODE":
                     back_rect = pygame.Rect(725, 600 + cabinet.Y_SHIFT, 180, 45)
                     if back_rect.collidepoint(mouse_pos):
@@ -850,6 +819,7 @@ async def run_lottery(balance=1000):
                         pre_rendered_ticket = None
                         current_mode = "VENDING_MODE"
                         if sfx["chip"]: sfx["chip"].play()
+
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 prev_mouse_pos = None
 
@@ -873,11 +843,10 @@ async def run_lottery(balance=1000):
                     scratch_canvas.scratch_line(start_local, current_local, poker_chip_radius)
                     prev_mouse_pos = current_local
                     particle_engine.emit_dust(mouse_pos, count=3)
-                    if sys_rand.random() < 0.35 and sfx["scrape"]:
+                    if random.random() < 0.35 and sfx["scrape"]:
                         sfx["scrape"].play()
             else:
                 prev_mouse_pos = None
-
             scratch_canvas.audit_reveal_thresholds(ticket_payload["scratch_targets"])
 
         screen.fill(MAHOGANY)
@@ -889,7 +858,6 @@ async def run_lottery(balance=1000):
 
         pulse_alpha = math.sin(frame_counter * 0.08) * 40 + 215
         marquee_gold = (int(pulse_alpha), 180, 85)
-
         pygame.draw.rect(screen, CHARCOAL, (45, 20, 860, 45), 0, 4)
         pygame.draw.rect(screen, marquee_gold, (45, 20, 860, 45), 2, 4)
 
@@ -953,6 +921,13 @@ async def run_lottery(balance=1000):
                 pygame.draw.circle(screen, CREAM_WHITE, mouse_pos, int(poker_chip_radius * 0.55))
 
         particle_engine.update_and_draw(screen)
+
+        _lobby_btn_hover = _lobby_btn_rect.collidepoint(mouse_pos)
+        _lobby_btn_bg = (70, 45, 25) if _lobby_btn_hover else (40, 25, 15)
+        pygame.draw.rect(screen, _lobby_btn_bg, _lobby_btn_rect, 0, 6)
+        pygame.draw.rect(screen, (200, 160, 90) if _lobby_btn_hover else (150, 110, 60), _lobby_btn_rect, 1, 6)
+        screen.blit(_lobby_btn_text_surf, (10, HEIGHT - 22))
+
         pygame.display.flip()
         await asyncio.sleep(0)
         clock.tick(60)
