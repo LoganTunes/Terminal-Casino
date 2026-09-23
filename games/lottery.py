@@ -135,11 +135,6 @@ class TicketPayloadGenerator:
 
     @classmethod
     def generate_payload(cls, tier, wager):
-        # Win chance + multiplier weights are calibrated so the average
-        # ticket returns ~73% of what was wagered (a realistic scratch-off
-        # house edge). The old values (38% win chance, multipliers weighted
-        # toward 2x-10x) averaged OVER 110% of wager paid back - a
-        # mathematically guaranteed loss for the house on every ticket sold.
         win_chance = secrets.randbelow(100)
         is_winner = win_chance < 28
         multiplier = 0
@@ -206,7 +201,7 @@ class TicketPayloadGenerator:
             per_letter_rate = max(10, wager // 4)
 
             caller_letters = []
-            MAX_VOWELS = 3  # Hard cap on caller vowels per ticket
+            MAX_VOWELS = 3
 
             def count_vowels(letters):
                 return sum(1 for c in letters if c in VOWELS)
@@ -214,47 +209,19 @@ class TicketPayloadGenerator:
             num_winning_words = 1 if multiplier <= 4 else 2
 
             def word_is_protected(idx):
-                # True if this target word must NOT be allowed to complete.
                 return (not is_winner) or (idx >= num_winning_words)
 
             if is_winner:
                 winning_words = target_words[:num_winning_words]
-
                 for w in winning_words:
                     for char in w:
                         if char not in caller_letters:
                             caller_letters.append(char)
 
-                # Add partial consonant letters for remaining words
-                for w in target_words[num_winning_words:]:
-                    unmatched = [c for c in w if c not in caller_letters]
-                    if len(unmatched) > 1:
-                        for char in unmatched[:-1]:
-                            vowel_check = (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS)
-                            if len(caller_letters) < 16 and char not in caller_letters and not vowel_check:
-                                caller_letters.append(char)
-            else:
-                # Guarantee NO word can be completely spelled out
-                for w in target_words:
-                    unmatched = [c for c in w if c not in caller_letters]
-                    if len(unmatched) > 1:
-                        for char in unmatched[:-1]:
-                            vowel_check = (char in VOWELS) and (count_vowels(caller_letters) >= MAX_VOWELS)
-                            if len(caller_letters) < 16 and char not in caller_letters and not vowel_check:
-                                caller_letters.append(char)
-
-            # Heavily weighted letter pool (Consonants 6x more likely than Vowels)
+            # Prevent completed words on protected targets by blocking the final missing character
             alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
             weights = [1 if c in VOWELS else 6 for c in alphabet]
 
-            # FIX: previously this loop picked a random candidate letter FIRST and only
-            # afterwards checked whether it would complete a "protected" word - if it did,
-            # the letter was silently dropped but never excluded from being re-picked, so
-            # once every remaining legal letter would complete some protected word (very
-            # common on losing tickets, where ALL 8 words are protected), the loop could
-            # spin forever without len(caller_letters) ever changing, hanging the game.
-            # Now we filter candidates down to only SAFE letters before choosing, so each
-            # iteration either makes guaranteed progress or the loop cleanly breaks.
             while len(caller_letters) < 16:
                 current_vowels = count_vowels(caller_letters)
                 valid_candidates = []
@@ -280,14 +247,23 @@ class TicketPayloadGenerator:
                     candidate_weights.append(w)
 
                 if not valid_candidates:
-                    break
+                    # Fall back to remaining unused non-vowels if constraints hit a boundary
+                    unused = [c for c in alphabet if c not in caller_letters and c not in VOWELS]
+                    for char in unused:
+                        test_letters = caller_letters + [char]
+                        if not any(word_is_protected(i) and all(c in test_letters for c in w_target) for i, w_target in enumerate(target_words)):
+                            valid_candidates.append(char)
+                            candidate_weights.append(6)
+                    if not valid_candidates:
+                        break
 
                 extra = random.choices(valid_candidates, weights=candidate_weights, k=1)[0]
                 caller_letters.append(extra)
 
+            random.shuffle(caller_letters)
             payload["caller_letters"] = caller_letters[:16]
 
-            # Audit exact payout matching completed target words
+            # Recalculate and audit exact payout matching completed target words
             actual_payout = 0
             for w in target_words:
                 if all(char in payload["caller_letters"] for char in w):
@@ -332,8 +308,6 @@ class TicketPayloadGenerator:
 #              REALISTIC VENDING MACHINE CABINET
 # ============================================================
 class VendingMachineCabinet:
-    # Vertical offset applied to every cabinet element (used to nudge the
-    # whole machine down on screen). Change this one value to reposition it.
     Y_SHIFT = 25
 
     def __init__(self, fonts, sfx):
