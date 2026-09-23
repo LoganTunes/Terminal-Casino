@@ -72,11 +72,6 @@ pygame.mixer.init(
 
 WIDTH, HEIGHT = 900, 720
 
-# NOTE: display is (re)configured inside run_*() below, not at import time.
-# Calling set_mode() here too caused repeated canvas resizes on startup
-# (once per game module imported by main.py), which breaks rendering
-# under pygbag/WebAssembly.
-
 clock = pygame.time.Clock()
 _lobby_hint_font = pygame.font.SysFont("sans-serif", 20)
 _GAME_TITLE = "Vintage Vegas Slots - Pure Vector Build"
@@ -172,6 +167,9 @@ CHARCOAL = (24, 24, 24)
 BRIGHT_RED = (210, 25, 25)
 RED_SHADOW = (120, 10, 10)
 
+BRIGHT_GREEN = (30, 180, 50)
+GREEN_SHADOW = (15, 90, 25)
+
 WHITE_GLINT = (255, 255, 255)
 
 TOKEN_EDGE = (90, 95, 100)
@@ -186,6 +184,7 @@ TOKEN_SHINE = (240, 245, 250)
 ui_font = pygame.font.SysFont("sans-serif", 24, bold=True)
 label_font = pygame.font.SysFont("sans-serif", 18, bold=True)
 button_font = pygame.font.SysFont("sans-serif", 22, bold=True)
+auto_btn_font = pygame.font.SysFont("sans-serif", 15, bold=True)
 
 
 # ============================================================
@@ -389,7 +388,7 @@ def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
 
 
 # ============================================================
-#                           LIVE STATES
+#                            LIVE STATES
 # ============================================================
 
 async def run_slots(balance):
@@ -422,6 +421,7 @@ async def run_slots(balance):
 
     is_spinning = False
     spin_phase_timer = 0
+    auto_spin = False
 
     lever_state = 0
     lever_offset_y = 0
@@ -444,6 +444,13 @@ async def run_slots(balance):
         280,
         535,
         40,
+        35,
+    )
+
+    auto_spin_rect = pygame.Rect(
+        510,
+        535,
+        110,
         35,
     )
 
@@ -494,6 +501,9 @@ async def run_slots(balance):
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
 
+                if auto_spin_rect.collidepoint(mouse_pos):
+                    auto_spin = not auto_spin
+
                 if not is_spinning and lever_state == 0:
                     if lever_knob_rect.collidepoint(mouse_pos):
                         lever_state = 1
@@ -512,6 +522,18 @@ async def run_slots(balance):
                             bet_amount -= 5
                         win_message = ""
 
+        # Auto spin trigger loop logic
+        if auto_spin and not is_spinning and lever_state == 0:
+            if balance >= bet_amount:
+                lever_state = 1
+                win_message = ""
+                active_coins.clear()
+                tray_coins.clear()
+                snd_lever.play()
+            else:
+                auto_spin = False
+                win_message = "INSUFFICIENT FUNDS FOR AUTO SPIN!"
+
         if lever_state == 1:
             lever_offset_y += 15
             if lever_offset_y >= 140:
@@ -525,6 +547,7 @@ async def run_slots(balance):
                         reel[3] = True
                 else:
                     win_message = "INSUFFICIENT FUNDS! LOWER WAGER TICKER."
+                    auto_spin = False
 
         elif lever_state == 2:
             lever_offset_y -= 25
@@ -580,6 +603,7 @@ async def run_slots(balance):
 
                 if balance <= 0:
                     win_message = "OUT OF CHIPS! RE-RUN GAME TO RESET."
+                    auto_spin = False
 
         if win_light_timer > 0:
             win_light_timer -= 1
@@ -688,13 +712,24 @@ async def run_slots(balance):
         screen.blit(bal_lbl, (170, 455))
         screen.blit(bet_lbl, (170, 495))
 
-        # Buttons
+        # Wager Control Buttons
         for rect, symbol in [(dec_bet_rect, "-"), (inc_bet_rect, "+")]:
             pygame.draw.rect(screen, RED_SHADOW, rect, 0, 4)
             pygame.draw.rect(screen, BRIGHT_RED, (rect.x, rect.y, rect.width, rect.height - 4), 0, 4)
             pygame.draw.rect(screen, CREAM_WHITE, (rect.x, rect.y, rect.width, rect.height - 4), 1, 4)
             button_text = button_font.render(symbol, True, CREAM_WHITE)
             screen.blit(button_text, (rect.centerx - button_text.get_width() // 2, rect.y + 2))
+
+        # Auto Spin Toggle Button
+        auto_bg = BRIGHT_GREEN if auto_spin else BRIGHT_RED
+        auto_shadow = GREEN_SHADOW if auto_spin else RED_SHADOW
+        auto_text_str = "AUTO: ON" if auto_spin else "AUTO: OFF"
+
+        pygame.draw.rect(screen, auto_shadow, auto_spin_rect, 0, 4)
+        pygame.draw.rect(screen, auto_bg, (auto_spin_rect.x, auto_spin_rect.y, auto_spin_rect.width, auto_spin_rect.height - 4), 0, 4)
+        pygame.draw.rect(screen, CREAM_WHITE, (auto_spin_rect.x, auto_spin_rect.y, auto_spin_rect.width, auto_spin_rect.height - 4), 1, 4)
+        auto_text = auto_btn_font.render(auto_text_str, True, CREAM_WHITE)
+        screen.blit(auto_text, (auto_spin_rect.centerx - auto_text.get_width() // 2, auto_spin_rect.y + 8))
 
         # Coin Tray
         tray_rect = pygame.Rect(300, 620, 200, 55)
