@@ -192,7 +192,6 @@ auto_btn_font = pygame.font.SysFont("sans-serif", 15, bold=True)
 # ============================================================
 
 def draw_custom_seven(surface, cx, cy, scale=1.0):
-    """3D Metallic Red '7' with beveling and gold outline."""
     pts = [
         (cx - int(22 * scale), cy - int(28 * scale)),
         (cx + int(22 * scale), cy - int(28 * scale)),
@@ -217,7 +216,6 @@ def draw_custom_seven(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_bar(surface, cx, cy, scale=1.0):
-    """3D Metallic Beveled BAR Badge."""
     w, h = int(76 * scale), int(36 * scale)
     bar_rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
 
@@ -235,7 +233,6 @@ def draw_custom_bar(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_cherry(surface, cx, cy, scale=1.0):
-    """Glossy Cherry Emoji match with curved stems and leaf."""
     p1 = (cx - int(10 * scale), cy + int(6 * scale))
     p2 = (cx + int(10 * scale), cy + int(8 * scale))
     top_stem = (cx + int(3 * scale), cy - int(22 * scale))
@@ -261,7 +258,6 @@ def draw_custom_cherry(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_bell(surface, cx, cy, scale=1.0):
-    """3D Golden Liberty Bell with rim glare and dark clapper."""
     pygame.draw.circle(surface, (50, 40, 20), (cx, cy + int(16 * scale)), max(1, int(6 * scale)))
     
     pts = [
@@ -298,7 +294,6 @@ def draw_custom_bell(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_lemon(surface, cx, cy, scale=1.0):
-    """Vibrant Citrus Lemon with texture tips and glossy sheen."""
     w, h = int(48 * scale), int(32 * scale)
     rect = pygame.Rect(cx - w // 2, cy - h // 2, w, h)
     
@@ -318,7 +313,6 @@ def draw_custom_lemon(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_grape(surface, cx, cy, scale=1.0):
-    """Deep Purple Grape Cluster with green leaf stem."""
     pygame.draw.line(
         surface,
         (80, 130, 30),
@@ -352,7 +346,6 @@ def draw_custom_grape(surface, cx, cy, scale=1.0):
 
 
 def draw_custom_orange(surface, cx, cy, scale=1.0):
-    """3D Citrus Orange with dimpled shading and sprout leaf."""
     r = int(21 * scale)
     
     leaf_pts = [
@@ -370,7 +363,6 @@ def draw_custom_orange(surface, cx, cy, scale=1.0):
 
 
 def render_symbol(surface, symbol, center_x, center_y, scale=1.0):
-    """Direct visual dispatcher accepting constants, strings, and emoji format variants."""
     if symbol in ("7", SEVEN, "SEVEN"):
         draw_custom_seven(surface, center_x, center_y, scale)
     elif symbol in ("BAR", BAR, "bar"):
@@ -404,6 +396,7 @@ async def run_slots(balance):
     win_message = "WELCOME HIGH ROLLER! PULL LEVER TO SPIN."
 
     win_light_timer = 0
+    payout_delay_timer = 0  # Timer to pause auto-spin during win animations (~5 sec = 300 frames @ 60fps)
     active_coins = []
     tray_coins = []
 
@@ -426,33 +419,10 @@ async def run_slots(balance):
     lever_state = 0
     lever_offset_y = 0
 
-    lever_knob_rect = pygame.Rect(
-        760,
-        240,
-        50,
-        50,
-    )
-
-    dec_bet_rect = pygame.Rect(
-        190,
-        535,
-        40,
-        35,
-    )
-
-    inc_bet_rect = pygame.Rect(
-        280,
-        535,
-        40,
-        35,
-    )
-
-    auto_spin_rect = pygame.Rect(
-        510,
-        535,
-        110,
-        35,
-    )
+    lever_knob_rect = pygame.Rect(760, 240, 50, 50)
+    dec_bet_rect = pygame.Rect(190, 535, 40, 35)
+    inc_bet_rect = pygame.Rect(280, 535, 40, 35)
+    auto_spin_rect = pygame.Rect(510, 535, 110, 35)
 
     def draw_brushed_chrome_rect(surface, rect):
         pygame.draw.rect(surface, CHROME_SHADOW, rect)
@@ -504,7 +474,7 @@ async def run_slots(balance):
                 if auto_spin_rect.collidepoint(mouse_pos):
                     auto_spin = not auto_spin
 
-                if not is_spinning and lever_state == 0:
+                if not is_spinning and lever_state == 0 and payout_delay_timer <= 0:
                     if lever_knob_rect.collidepoint(mouse_pos):
                         lever_state = 1
                         win_message = ""
@@ -522,8 +492,12 @@ async def run_slots(balance):
                             bet_amount -= 5
                         win_message = ""
 
-        # Auto spin trigger loop logic
-        if auto_spin and not is_spinning and lever_state == 0:
+        # Decrement delay timer during payouts
+        if payout_delay_timer > 0:
+            payout_delay_timer -= 1
+
+        # Auto spin trigger loop logic - Waits for payout_delay_timer to reach 0 (~5 seconds on wins)
+        if auto_spin and not is_spinning and lever_state == 0 and payout_delay_timer <= 0:
             if balance >= bet_amount:
                 lever_state = 1
                 win_message = ""
@@ -585,7 +559,8 @@ async def run_slots(balance):
                 if winnings > 0:
                     balance += winnings
                     win_message = f"WINNER! {description} +${winnings}"
-                    win_light_timer = 120
+                    win_light_timer = 300
+                    payout_delay_timer = 300  # Set 5-second delay (300 frames @ 60 FPS)
 
                     coin_count = min(30, max(5, winnings // 2))
                     for c in range(coin_count):
@@ -594,11 +569,12 @@ async def run_slots(balance):
                             'y': 590,
                             'vy': random.uniform(-6, -2),
                             'vx': random.uniform(-2, 2),
-                            'delay': c * 3,
+                            'delay': c * 6, # Staggered coin dropping animation over the payout duration
                         })
                     snd_winner.play()
                 else:
                     win_message = "NO MATCH. BETTER LUCK NEXT SPIN!"
+                    payout_delay_timer = 0 # No payout delay on loss
                     snd_loser.play()
 
                 if balance <= 0:
