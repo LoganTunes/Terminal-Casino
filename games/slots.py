@@ -397,6 +397,9 @@ async def run_slots(balance):
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(_GAME_TITLE)
     running = True
+    _lobby_btn_label = "ESC: Return to Lobby"
+    _lobby_btn_text_surf = _lobby_hint_font.render(_lobby_btn_label, True, (230, 200, 140))
+    _lobby_btn_rect = pygame.Rect(10 - 8, (HEIGHT - 22) - 6, _lobby_btn_text_surf.get_width() + 16, _lobby_btn_text_surf.get_height() + 12)
     bet_amount = 10
 
     win_message = "WELCOME HIGH ROLLER! PULL LEVER TO SPIN."
@@ -484,6 +487,8 @@ async def run_slots(balance):
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and _lobby_btn_rect.collidepoint(event.pos):
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -716,8 +721,11 @@ async def run_slots(balance):
         pygame.draw.circle(screen, BRIGHT_RED, (785, 260 + lever_offset_y), 24)
         pygame.draw.circle(screen, WHITE_GLINT, (776, 252 + lever_offset_y), 6)
 
-        _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
-        screen.blit(_hint_surf, (10, HEIGHT - 22))
+        _lobby_btn_hover = _lobby_btn_rect.collidepoint(pygame.mouse.get_pos())
+        _lobby_btn_bg = (70, 45, 25) if _lobby_btn_hover else (40, 25, 15)
+        pygame.draw.rect(screen, _lobby_btn_bg, _lobby_btn_rect, 0, 6)
+        pygame.draw.rect(screen, (200, 160, 90) if _lobby_btn_hover else (150, 110, 60), _lobby_btn_rect, 1, 6)
+        screen.blit(_lobby_btn_text_surf, (10, HEIGHT - 22))
         pygame.display.flip()
 
         await asyncio.sleep(0)
