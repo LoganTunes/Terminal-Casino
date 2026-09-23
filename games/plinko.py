@@ -297,6 +297,7 @@ BUMP_FLASH_SECONDS = 0.1
 async def run_plinko(balance):
     init_sounds()
     clock = pygame.time.Clock()
+    _lobby_hint_font = pygame.font.SysFont("arial", 18, bold=True)
 
     font_options = ["segoeuiemoji", "applecoloremoji", "notocoloremoji", "arial"]
     ui_font = pygame.font.SysFont(font_options, 18, bold=True)
@@ -331,6 +332,9 @@ async def run_plinko(balance):
     }
 
     running = True
+    _lobby_btn_label = "ESC: Return to Lobby"
+    _lobby_btn_text_surf = _lobby_hint_font.render(_lobby_btn_label, True, (230, 200, 140))
+    _lobby_btn_rect = pygame.Rect(10 - 8, (HEIGHT - 22) - 6, _lobby_btn_text_surf.get_width() + 16, _lobby_btn_text_surf.get_height() + 12)
     while running:
         screen = pygame.display.get_surface()
         if screen is None:
@@ -341,6 +345,9 @@ async def run_plinko(balance):
         for event in pygame.event.get():
             # Treat window close (QUIT) identically to ESC return to prevent display context corruption
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                return balance
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and _lobby_btn_rect.collidepoint(pygame.mouse.get_pos()):
                 return balance
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -542,6 +549,12 @@ async def run_plinko(balance):
         msg_color = VINTAGE_GOLD if ("WINNER" in win_message or "BIG WIN" in win_message or "READY" in win_message or "DROP" in win_message) else COLOR_RED if ("❌" in win_message or "TRAP" in win_message) else CREAM_WHITE
         msg_surf = ui_font.render(win_message, True, msg_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 655))
+
+        _lobby_btn_hover = _lobby_btn_rect.collidepoint(pygame.mouse.get_pos())
+        _lobby_btn_bg = (70, 45, 25) if _lobby_btn_hover else (40, 25, 15)
+        pygame.draw.rect(screen, _lobby_btn_bg, _lobby_btn_rect, 0, 6)
+        pygame.draw.rect(screen, (200, 160, 90) if _lobby_btn_hover else (150, 110, 60), _lobby_btn_rect, 1, 6)
+        screen.blit(_lobby_btn_text_surf, (10, HEIGHT - 22))
 
         pygame.display.flip()
         await asyncio.sleep(0)
