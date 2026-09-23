@@ -396,7 +396,7 @@ async def run_slots(balance):
     win_message = "WELCOME HIGH ROLLER! PULL LEVER TO SPIN."
 
     win_light_timer = 0
-    payout_delay_timer = 0  # Timer to pause auto-spin during win animations (~5 sec = 300 frames @ 60fps)
+    payout_delay_timer = 0
     active_coins = []
     tray_coins = []
 
@@ -492,11 +492,9 @@ async def run_slots(balance):
                             bet_amount -= 5
                         win_message = ""
 
-        # Decrement delay timer during payouts
         if payout_delay_timer > 0:
             payout_delay_timer -= 1
 
-        # Auto spin trigger loop logic - Waits for payout_delay_timer to reach 0 (~5 seconds on wins)
         if auto_spin and not is_spinning and lever_state == 0 and payout_delay_timer <= 0:
             if balance >= bet_amount:
                 lever_state = 1
@@ -559,22 +557,29 @@ async def run_slots(balance):
                 if winnings > 0:
                     balance += winnings
                     win_message = f"WINNER! {description} +${winnings}"
-                    win_light_timer = 300
-                    payout_delay_timer = 300  # Set 5-second delay (300 frames @ 60 FPS)
+
+                    # Fast 2.5s delay (150 frames) for Cherries, 5.0s delay (300 frames) for Triples
+                    is_cherry_win = "Cherry" in description
+                    delay_duration = 150 if is_cherry_win else 300
+
+                    win_light_timer = delay_duration
+                    payout_delay_timer = delay_duration
 
                     coin_count = min(30, max(5, winnings // 2))
+                    stagger_step = 3 if is_cherry_win else 6
+
                     for c in range(coin_count):
                         active_coins.append({
                             'x': random.randint(340, 460),
                             'y': 590,
                             'vy': random.uniform(-6, -2),
                             'vx': random.uniform(-2, 2),
-                            'delay': c * 6, # Staggered coin dropping animation over the payout duration
+                            'delay': c * stagger_step,
                         })
                     snd_winner.play()
                 else:
                     win_message = "NO MATCH. BETTER LUCK NEXT SPIN!"
-                    payout_delay_timer = 0 # No payout delay on loss
+                    payout_delay_timer = 0
                     snd_loser.play()
 
                 if balance <= 0:
