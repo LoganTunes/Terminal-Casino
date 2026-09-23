@@ -25,15 +25,19 @@ BIG_SIX_WHEEL = [
     "$1", "$2", "$1", "$5", "$2", "JOKER"
 ]
 
-# TUNED PAYOUTS: Boosted high-tier returns to lower house edge ~3-5%
+# Payout multipliers, calibrated against this wheel's actual segment counts
+# ($1:22, $2:15, $5:9, $10:3, $20:3, JOKER:1, FLAG:1 out of 54) so every bet
+# keeps a real house edge. $20/JOKER/FLAG also earn a 2:1 "near-miss" bonus
+# on adjacent segments (see the spin-resolution code below), which is
+# included in this math.
 PAYOUT_MULTIPLIERS = {
     "$1": 1,
     "$2": 2,
-    "$5": 5,
-    "$10": 12,    # Boosted from 10:1
-    "$20": 25,    # Boosted from 20:1
-    "JOKER": 60,  # Boosted from 45:1
-    "FLAG": 60,   # Boosted from 45:1
+    "$5": 4,
+    "$10": 12,
+    "$20": 10,
+    "JOKER": 45,
+    "FLAG": 45,
 }
 
 # Base Colors
@@ -127,6 +131,7 @@ async def run_big_six(balance):
         screen = pygame.display.set_mode((1080, 720))
 
     clock = pygame.time.Clock()
+    _lobby_hint_font = pygame.font.SysFont(None, 20)
 
     snd_clapper = generate_synth_sound([900, 450], 12, "square", 0.10)
     snd_win = generate_synth_sound([440, 554, 659, 880], 400, "square", 0.15)
@@ -195,6 +200,9 @@ async def run_big_six(balance):
         surface.blit(c_txt, (cx - c_txt.get_width() // 2, cy - c_txt.get_height() // 2))
 
     running = True
+    _lobby_btn_label = "ESC: Return to Lobby"
+    _lobby_btn_text_surf = _lobby_hint_font.render(_lobby_btn_label, True, (230, 200, 140))
+    _lobby_btn_rect = pygame.Rect(10 - 8, (720 - 22) - 6, _lobby_btn_text_surf.get_width() + 16, _lobby_btn_text_surf.get_height() + 12)
     while running:
         mouse_pos = pygame.mouse.get_pos()
 
@@ -204,6 +212,9 @@ async def run_big_six(balance):
                 break
 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return balance + sum(player_bets.values())
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and _lobby_btn_rect.collidepoint(mouse_pos):
                 return balance + sum(player_bets.values())
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -273,14 +284,14 @@ async def run_big_six(balance):
                 # 2. Near-Miss Consolation Check for High-Tier Bets ($20, Joker, Flag)
                 for spot in ["JOKER", "FLAG", "$20"]:
                     if player_bets[spot] > 0 and spot in (prev_slot, next_slot) and spot != winning_slot:
-                        consolation = player_bets[spot] * 1  # Returns exact wager back
+                        consolation = player_bets[spot] * 2  # Pays 2:1 near-miss bonus
                         total_won += consolation
                         near_miss = True
 
                 if total_won > 0:
                     balance += total_won
                     if near_miss and player_bets[winning_slot] == 0:
-                        win_msg = f"⚡ NEAR MISS! Wager returned! (Paid ${total_won})"
+                        win_msg = f"⚡ NEAR MISS! Consolation payout! (Paid ${total_won})"
                     else:
                         win_msg = f"🎉 WINNER! Stopped on {winning_slot} (Paid ${total_won})!"
                     if snd_win: snd_win.play()
@@ -437,6 +448,12 @@ async def run_big_six(balance):
         pygame.draw.rect(screen, VEGAS_GOLD, (30, 645, 1020, 40), 2, 4)
         msg_s = ui_font.render(win_msg, True, VEGAS_GOLD if "🎉" in win_msg or "⚡" in win_msg else CREAM_WHITE)
         screen.blit(msg_s, (540 - msg_s.get_width() // 2, 654))
+
+        _lobby_btn_hover = _lobby_btn_rect.collidepoint(mouse_pos)
+        _lobby_btn_bg = (70, 45, 25) if _lobby_btn_hover else (40, 25, 15)
+        pygame.draw.rect(screen, _lobby_btn_bg, _lobby_btn_rect, 0, 6)
+        pygame.draw.rect(screen, (200, 160, 90) if _lobby_btn_hover else (150, 110, 60), _lobby_btn_rect, 1, 6)
+        screen.blit(_lobby_btn_text_surf, (10, 720 - 22))
 
         pygame.display.flip()
         # Yield control back to browser event loop
