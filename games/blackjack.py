@@ -376,6 +376,9 @@ async def run_blackjack(balance):
     pygame.event.clear()
 
     running = True
+    _lobby_btn_label = "ESC: Return to Lobby"
+    _lobby_btn_text_surf = _lobby_hint_font.render(_lobby_btn_label, True, (230, 200, 140))
+    _lobby_btn_rect = pygame.Rect(15 - 8, (HEIGHT - 25) - 6, _lobby_btn_text_surf.get_width() + 16, _lobby_btn_text_surf.get_height() + 12)
     active_chip_wager = 10
     current_bet = 0
     win_message = "SELECT A CHIP VALUE & PLACE A BET!"
@@ -527,6 +530,8 @@ async def run_blackjack(balance):
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and _lobby_btn_rect.collidepoint(event.pos):
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -770,8 +775,11 @@ async def run_blackjack(balance):
         msg_surf = ui_font.render(win_message, True, msg_color)
         screen.blit(msg_surf, (WIDTH // 2 - msg_surf.get_width() // 2, 597))
 
-        _hint_surf = _lobby_hint_font.render("ESC: Return to Lobby", True, (230, 200, 140))
-        screen.blit(_hint_surf, (15, HEIGHT - 25))
+        _lobby_btn_hover = _lobby_btn_rect.collidepoint(pygame.mouse.get_pos())
+        _lobby_btn_bg = (70, 45, 25) if _lobby_btn_hover else (40, 25, 15)
+        pygame.draw.rect(screen, _lobby_btn_bg, _lobby_btn_rect, 0, 6)
+        pygame.draw.rect(screen, (200, 160, 90) if _lobby_btn_hover else (150, 110, 60), _lobby_btn_rect, 1, 6)
+        screen.blit(_lobby_btn_text_surf, (15, HEIGHT - 25))
 
         pygame.display.flip()
         clock.tick(60)
